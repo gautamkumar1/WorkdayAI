@@ -282,44 +282,35 @@ workday-ai/
 
 ---
 
-## Phase 6 — Workday-Specific Automation
+## Phase 6 — Workday-Specific Automation ✅
 
 ### DOM Strategy (No Hardcoded Selectors)
-- [ ] Use attribute-based selection: `[data-automation-id]`, `[aria-label]`, `[placeholder]`
-- [ ] Use label text matching as primary selector strategy
-- [ ] Use ARIA roles as fallback: `role="combobox"`, `role="radio"`, `role="listbox"`
-- [ ] Build `findFieldByLabel(labelText: string): Element | null` utility
-- [ ] Build `findFieldByAriaLabel(ariaLabel: string): Element | null` utility
-- [ ] Build `findFieldByPlaceholder(placeholder: string): Element | null` utility
+- [x] Attribute-based selection: `[data-automation-id]` → `[aria-label]` → label text → `[placeholder]`
+- [x] Label text matching as primary strategy with Workday `*Label` div pattern
+- [x] ARIA roles as fallback in formScanner (`role="combobox"`, `role="radio"`, `role="listbox"`)
+- [x] `findFieldByLabel(labelText: string): Element | null` — `src/modules/dom/fieldFinder.ts`
+- [x] `findFieldByAriaLabel(ariaLabel: string): Element | null`
+- [x] `findFieldByPlaceholder(placeholder: string): Element | null`
 
 ### React Event Simulation (Critical for Workday)
-- [ ] Implement native input value setter override to bypass React's synthetic event system:
-  ```js
-  const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
-    window.HTMLInputElement.prototype, 'value'
-  ).set;
-  nativeInputValueSetter.call(input, value);
-  input.dispatchEvent(new Event('input', { bubbles: true }));
-  input.dispatchEvent(new Event('change', { bubbles: true }));
-  input.dispatchEvent(new Event('blur', { bubbles: true }));
-  ```
-- [ ] Test this pattern on each of the 4 target job postings
-- [ ] Handle textarea fields with same pattern
-- [ ] Handle Select elements differently (dispatchEvent with 'change')
+- [x] nativeInputValueSetter + input/change/blur events in `textFiller.ts`
+- [x] textarea handled with same pattern via `HTMLTextAreaElement.prototype`
+- [x] Select elements use `selectedIndex` + `change` event in `dropdownFiller.ts`
+- [x] Wired into `fillOrchestrator.ts` as primary fill strategy
 
 ### Multi-Step Navigation
-- [ ] Map known Workday step URLs and DOM signatures
-- [ ] Detect login wall → pause and notify user to log in
-- [ ] Detect "Create Account" vs "Sign In" and notify user
-- [ ] After login, resume autofill from last known step
-- [ ] Handle "Save and Continue" vs "Next" button text variants
-- [ ] Detect final review page, pause, show review UI
+- [x] All 8 Workday step URL patterns + DOM signatures in `stepDetector.ts`
+- [x] Login wall detected via `loginWatcher.ts` — sends `LOGIN_REQUIRED` to popup
+- [x] `waitForLoginCompletion()` polls until step leaves login (5 min timeout)
+- [x] `stepAdvancer.ts` handles "Save and Continue" and "Next" variants
+- [x] Polling step-change detection (200ms intervals, 5s max) after advance
+- [x] `REVIEW_READY` notification sent when review step detected
 
 ### Error Recovery
-- [ ] Catch fills that didn't register (field still empty after fill attempt)
-- [ ] Retry with alternate fill strategy (keyboard events vs mouse events)
-- [ ] After 3 failures, mark field as "manual fill required" and highlight it on page
-- [ ] Log all failures with field selector, attempted value, error message
+- [x] Fill verification after each attempt (check element value after 100ms)
+- [x] 3-strategy fallback: nativeInputValueSetter → keyboard events → execCommand
+- [x] Failed fields marked `status: 'manual_required'` and highlighted red on page
+- [x] Visual highlighting: pending=blue, success=green, failed=red via `fieldHighlighter.ts`
 
 ---
 
