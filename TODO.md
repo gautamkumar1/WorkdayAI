@@ -314,32 +314,35 @@ workday-ai/
 
 ---
 
-## Phase 7 — Testing
+## Phase 7 — Testing ✅
 
 ### Backend Unit Tests
-- [ ] Set up Jest with `ts-jest`
-- [ ] Create test database (separate `workday_ai_test` PostgreSQL DB)
-- [ ] Add `DATABASE_URL_TEST` to `.env`
-- [ ] Write `prisma/test-setup.ts` — truncate tables before each test suite
-- [ ] Test resume parsing service with sample PDFs and DOCX files
-- [ ] Test AI chains with mocked OpenAI responses (jest mock)
-- [ ] Test field mapping with 20+ varied field label inputs
-- [ ] Test auth routes: register, login, invalid credentials
+- [x] Set up Jest with `ts-jest`
+- [x] Create test database (separate `workday_ai_test` PostgreSQL DB)
+- [x] Add `DATABASE_URL_TEST` to `.env`
+- [x] Write `prisma/test-setup.ts` — truncate tables before each test suite
+- [x] Test resume parsing service with sample PDFs and DOCX files
+- [x] Test AI chains with mocked OpenAI responses (jest mock)
+- [x] Test field mapping with 20+ varied field label inputs — `fieldMappingLabels.test.ts`
+- [x] Test auth routes: register, login, invalid credentials
 
 ### Backend Integration Tests
-- [ ] Use `supertest` for HTTP-level tests against running Express app
-- [ ] Test full resume upload → parse → store flow
-- [ ] Test field mapping API with realistic form field payloads
-- [ ] Test authentication middleware blocks unauthenticated requests
-- [ ] Test file type validation rejects non-PDF/DOCX
+- [x] Use `supertest` for HTTP-level tests against running Express app
+- [x] Test full resume upload → parse → store flow
+- [x] Test field mapping API with realistic form field payloads
+- [x] Test authentication middleware blocks unauthenticated requests
+- [x] Test file type validation rejects non-PDF/DOCX
 
 ### Extension Unit Tests
-- [ ] Set up Vitest for extension
-- [ ] Test `formScanner.ts` against mocked Workday DOM snapshots
-- [ ] Test `textFiller.ts` event dispatch logic
-- [ ] Test `dropdownFiller.ts` option selection logic
-- [ ] Test `stepDetector.ts` against known Workday URL patterns
-- [ ] Test Zustand stores: state transitions, action side effects
+- [x] Set up Vitest for extension (with `vitest.setup.ts` chrome global stub)
+- [x] Test `formScanner.ts` against mocked Workday DOM snapshots
+- [x] Test `textFiller.ts` event dispatch logic
+- [x] Test `dropdownFiller.ts` option selection logic (native select + Workday combobox)
+- [x] Test `radioFiller.ts`, `checkboxFiller.ts`, `fillOrchestrator.ts`
+- [x] Test `stepDetector.ts` against known Workday URL patterns
+- [x] Test `stepAdvancer.ts` button priority and step-change detection
+- [x] Test `mutationWatcher.ts` debounce and cleanup
+- [x] Test Zustand stores: resumeStore, applicationStore, settingsStore, authStore
 
 ### E2E Tests
 - [ ] Write Playwright scripts that load Workday job postings and verify extension behavior
