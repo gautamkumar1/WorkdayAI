@@ -371,25 +371,25 @@ workday-ai/
 ## Phase 9 — Build & Deliverables
 
 ### Extension Build
-- [ ] Add `pnpm build` script to extension (Vite build)
-- [ ] Build output goes to `apps/extension/dist/`
-- [ ] Verify extension loads correctly in Chrome (`chrome://extensions` → Load unpacked)
-- [ ] Test all 4 target job postings with the built extension
-- [ ] Zip `dist/` folder for submission
+- [x] `pnpm build` script exists in extension package (Vite build)
+- [x] Build output goes to `apps/extension/dist/` (manifest + icons + JS bundles)
+- [ ] Verify extension loads correctly in Chrome (`chrome://extensions` → Load unpacked) — **manual**
+- [ ] Test all 4 target job postings with the built extension — **manual**
+- [ ] Zip `dist/` folder for submission — **manual** (run: `cd apps/extension && zip -r ../../workday-ai-extension.zip dist/`)
 
 ### Documentation
-- [ ] Write `README.md`: project overview, local setup steps, how to load the extension
-- [ ] Write `docs/ARCHITECTURE.md`: component diagram, data flow, module responsibilities
-- [ ] Write `docs/AI_PROMPTING.md`: full prompt templates for resume parsing, field mapping, answer generation with rationale
-- [ ] Write `docs/LIMITATIONS.md`: known Workday UI variants that don't work, unsupported field types
-- [ ] Document all env vars in `.env.example` with descriptions
+- [x] Write `README.md`: project overview, local setup steps, how to load the extension
+- [x] `docs/ARCHITECTURE.md`: request/response flow, DB schema, error taxonomy — already complete
+- [x] `docs/AI_PROMPTS.md`: full prompt templates for resume parsing, field mapping, answer generation
+- [x] Write `docs/LIMITATIONS.md`: known Workday UI variants that don't work, unsupported field types
+- [x] Document all env vars in `.env.example` with descriptions
 
 ### Demo Video
-- [ ] Record resume upload and parsing
-- [ ] Record autofill across all form steps on one target job posting
-- [ ] Show low-confidence field review and manual override
-- [ ] Show final review screen before submission
-- [ ] Show user confirmation step (do not submit a real application)
+- [ ] Record resume upload and parsing — **manual**
+- [ ] Record autofill across all form steps on one target job posting — **manual**
+- [ ] Show low-confidence field review and manual override — **manual**
+- [ ] Show final review screen before submission — **manual**
+- [ ] Show user confirmation step (do not submit a real application) — **manual**
 
 ---
 
