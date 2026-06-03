@@ -5,6 +5,10 @@ import { resolve } from 'path'
 import { copyFileSync, mkdirSync, readdirSync } from 'fs'
 
 export default defineConfig({
+  test: {
+    setupFiles: ['./vitest.setup.ts'],
+    globals: true,
+  },
   plugins: [
     react(),
     tailwindcss(),
