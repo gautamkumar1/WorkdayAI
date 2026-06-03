@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
+import type { ResumeData } from '@workday-ai/shared'
 import { useResumeStore } from '../resumeStore'
 
 beforeEach(() => {
@@ -28,7 +29,7 @@ describe('resumeStore', () => {
   })
 
   it('setParsed transitions to done with data', () => {
-    const parsed = { name: 'John Doe', email: 'john@example.com' } as any
+    const parsed = { name: 'John Doe', email: 'john@example.com' } as unknown as ResumeData
     useResumeStore.getState().setParsed('raw text here', parsed)
     const state = useResumeStore.getState()
     expect(state.parseStatus).toBe('done')

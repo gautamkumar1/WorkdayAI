@@ -1,9 +1,22 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useApplicationStore } from '../applicationStore'
-import type { FillPlan, FillResult } from '@workday-ai/shared'
+import type { FillPlan, FillResult, FieldMapping } from '@workday-ai/shared'
 
-function makeFillPlan(fields: any[] = []): FillPlan {
-  return { fields }
+function makeField(overrides: Partial<FieldMapping> = {}): FieldMapping {
+  return {
+    fieldLabel: 'First Name',
+    fieldType: 'text',
+    value: 'Alice',
+    confidence: 0.95,
+    reasoning: 'direct match',
+    source: 'ai_generated',
+    needsReview: false,
+    ...overrides,
+  }
+}
+
+function makeFillPlan(fields: FieldMapping[] = []): FillPlan {
+  return { applicationId: 'app-1', fields, lowConfidenceCount: 0 }
 }
 
 beforeEach(() => {
@@ -20,8 +33,8 @@ describe('applicationStore', () => {
 
   it('startFill sets applicationId, jobUrl, and filters low-confidence fields', () => {
     const plan = makeFillPlan([
-      { fieldLabel: 'First Name', confidence: 0.95, needsReview: false },
-      { fieldLabel: 'Custom Question', confidence: 0.4, needsReview: true },
+      makeField({ fieldLabel: 'First Name', confidence: 0.95, needsReview: false }),
+      makeField({ fieldLabel: 'Custom Question', confidence: 0.4, needsReview: true }),
     ])
     useApplicationStore.getState().startFill('app-123', 'https://wd.com/apply', plan)
     const state = useApplicationStore.getState()
@@ -60,7 +73,7 @@ describe('applicationStore', () => {
   })
 
   it('reset clears all state', () => {
-    const plan = makeFillPlan([{ fieldLabel: 'Name', needsReview: false }])
+    const plan = makeFillPlan([makeField({ fieldLabel: 'Name' })])
     useApplicationStore.getState().startFill('app-1', 'https://wd.com', plan)
     useApplicationStore.getState().reset()
     const state = useApplicationStore.getState()

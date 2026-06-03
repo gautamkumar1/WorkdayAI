@@ -65,7 +65,7 @@ describe('scanFormFields — skipped elements', () => {
   it('skips hidden input type', () => {
     document.body.innerHTML = '<input type="hidden" name="csrf_token" value="abc" />'
     const fields = scanFormFields()
-    expect(fields.find((f) => (f as any).name === 'csrf_token')).toBeUndefined()
+    expect(fields.find((f) => (f as Record<string, unknown>).name === 'csrf_token')).toBeUndefined()
   })
 
   it('skips already-filled fields (data-wai-filled)', () => {

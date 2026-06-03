@@ -19,6 +19,7 @@ type ExtensionMessage =
   | StepChangedMessage
 
 chrome.runtime.onInstalled.addListener(() => {
+  // eslint-disable-next-line no-console
   console.log('WorkdayAI extension installed')
 })
 

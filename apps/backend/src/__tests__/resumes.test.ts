@@ -1,6 +1,4 @@
 import request from 'supertest'
-import path from 'path'
-import fs from 'fs'
 import app from '../app'
 import { prisma } from '../prisma/client'
 
