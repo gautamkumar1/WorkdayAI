@@ -6,7 +6,7 @@
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["*://*.myworkdayjobs.com/*"],
   "action": {
-    "default_popup": "popup/index.html",
+    "default_popup": "src/popup/index.html",
     "default_title": "WorkdayAI",
     "default_icon": {
       "16": "icons/icon16.png",
@@ -16,13 +16,13 @@
     }
   },
   "background": {
-    "service_worker": "background/serviceWorker.js",
+    "service_worker": "background/background.js",
     "type": "module"
   },
   "content_scripts": [
     {
       "matches": ["*://*.myworkdayjobs.com/*"],
-      "js": ["content/index.js"],
+      "js": ["content/content.js"],
       "run_at": "document_idle"
     }
   ],
