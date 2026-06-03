@@ -355,21 +355,16 @@ workday-ai/
 
 ---
 
-## Phase 8 — Code Quality
+## Phase 8 — Code Quality ✅
 
 ### Linting & Formatting
-- [ ] Install ESLint + Prettier:
-  ```
-  pnpm add -D eslint prettier eslint-config-prettier @typescript-eslint/eslint-plugin @typescript-eslint/parser
-  ```
-- [ ] Create `.eslintrc.json` with TypeScript rules, no-any rule
-- [ ] Create `.prettierrc` (single quotes, no semicolons, 100 char line width)
-- [ ] Add `lint` and `format` scripts to `package.json`
-- [ ] Configure pre-commit hook with lint-staged + Husky:
-  ```
-  pnpm add -D husky lint-staged
-  pnpm dlx husky init
-  ```
+- [x] Install ESLint + Prettier in backend and extension packages
+- [x] Create `eslint.config.mjs` (flat config, ESLint v9) with `@typescript-eslint/no-explicit-any`, no-unused-vars, no-console rules
+- [x] Create `.prettierrc` at root (single quotes, no semicolons, 100 char line width)
+- [x] `lint` and `format` scripts in both `package.json` files, `pnpm lint` at root runs both
+- [x] Configure pre-commit hook with lint-staged + Husky — runs prettier + eslint --fix on staged files
+- [x] Fix all existing lint violations across codebase
+- [x] Run `pnpm format` to apply Prettier to all existing files
 
 ---
 
