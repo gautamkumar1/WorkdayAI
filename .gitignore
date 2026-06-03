@@ -4,3 +4,29 @@
 # Project docs (local only)
 CLAUDE.md
 TODO.md
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment files
+.env
+
+# Keys and certificates
+*.pem
+*.key
+*.cert
+
+# OS artifacts
+.DS_Store
+
+# Logs
+*.log
+
+# Test coverage
+coverage/
+
+# Turbo cache
+.turbo/
