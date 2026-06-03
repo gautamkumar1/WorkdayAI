@@ -5,7 +5,7 @@ import { requireAuth } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import { ApiError } from '../utils/apiError'
 
-const router = Router()
+const router: ReturnType<typeof Router> = Router()
 
 const VALID_STATUSES = ['not_started', 'in_progress', 'paused', 'submitted', 'failed'] as const
 

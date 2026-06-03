@@ -6,7 +6,7 @@ import { parseResumeWithAI } from '../services/ai/resumeParsingChain'
 import { mapFieldsWithAI } from '../services/ai/fieldMappingChain'
 import { generateAnswerWithAI } from '../services/ai/answerGenerationChain'
 
-const router = Router()
+const router: ReturnType<typeof Router> = Router()
 
 const parseResumeSchema = z.object({
   rawText: z.string().min(1),

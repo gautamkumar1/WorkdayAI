@@ -7,7 +7,7 @@ import { validate } from '../middleware/validate'
 import { requireAuth } from '../middleware/auth'
 import { ApiError } from '../utils/apiError'
 
-const router = Router()
+const router: ReturnType<typeof Router> = Router()
 
 const registerSchema = z.object({
   email: z.string().email(),

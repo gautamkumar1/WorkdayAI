@@ -5,7 +5,7 @@ import { requireAuth } from '../middleware/auth'
 import { ApiError } from '../utils/apiError'
 import { extractText } from '../services/resume/parseService'
 
-const router = Router()
+const router: ReturnType<typeof Router> = Router()
 
 const ALLOWED_MIMETYPES = new Set([
   'application/pdf',
