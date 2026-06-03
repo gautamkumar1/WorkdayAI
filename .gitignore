@@ -1,0 +1,6 @@
+# PDF files
+*.pdf
+
+# Project docs (local only)
+CLAUDE.md
+TODO.md
