@@ -6,6 +6,7 @@ import LoginForm from './components/LoginForm'
 import ResumeUpload from './components/ResumeUpload'
 import ResumePreview from './components/ResumePreview'
 import ApplicationStatus from './components/ApplicationStatus'
+import AutofillPanel from './components/AutofillPanel'
 import ErrorPanel from './components/ErrorPanel'
 import FieldReviewPanel from './components/FieldReviewPanel'
 import FinalReviewScreen from './components/FinalReviewScreen'
@@ -21,7 +22,7 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('resume')
+  const [activeTab, setActiveTab] = useState<Tab>('status')
   const { parsedData } = useResumeStore()
   const { lowConfidenceFields, fillPlan, currentStep } = useApplicationStore()
   const { isAuthenticated, logout } = useAuthStore()
@@ -50,6 +51,7 @@ export default function App() {
       case 'status':
         return (
           <>
+            <AutofillPanel />
             <ApplicationStatus />
             <ErrorPanel />
           </>
