@@ -1,7 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai'
 import { ChatPromptTemplate } from '@langchain/core/prompts'
 import { JsonOutputParser } from '@langchain/core/output_parsers'
-import { RunnableSequence } from '@langchain/core/runnables'
 import { z } from 'zod'
 import { getDefaultModel, getMaxTokens } from './openaiClient'
 
@@ -34,31 +33,27 @@ Rules:
 - Wrap the array in {{"mappings": [...]}}
 - Return ONLY the JSON object, no explanation text`
 
-function buildChain() {
-  const model = new ChatOpenAI({
-    model: getDefaultModel(),
-    temperature: 0,
-    maxTokens: getMaxTokens(),
-  })
+const parser = new JsonOutputParser()
 
+async function invokeChain(fields: string, resumeData: string): Promise<unknown> {
+  const model = new ChatOpenAI({ model: getDefaultModel(), temperature: 0, maxTokens: getMaxTokens() })
   const prompt = ChatPromptTemplate.fromMessages([
     ['system', SYSTEM_PROMPT],
     ['human', 'Form fields:\n{fields}\n\nResume data:\n{resumeData}\n\nMap each field.'],
   ])
-
-  return RunnableSequence.from([prompt, model, new JsonOutputParser()])
+  const messages = await prompt.invoke({ fields, resumeData })
+  const response = await model.invoke(messages)
+  return parser.invoke(response)
 }
 
 export async function mapFieldsWithAI(
   fields: FieldDescriptor[],
   resumeData: Record<string, unknown>
 ): Promise<FieldMappingResult> {
-  const chain = buildChain()
-
-  const output = (await chain.invoke({
-    fields: JSON.stringify(fields, null, 2),
-    resumeData: JSON.stringify(resumeData, null, 2),
-  })) as { mappings?: unknown[] } | unknown[]
+  const output = (await invokeChain(
+    JSON.stringify(fields, null, 2),
+    JSON.stringify(resumeData, null, 2)
+  )) as { mappings?: unknown[] } | unknown[]
 
   const raw = Array.isArray(output) ? output : (output as { mappings?: unknown[] }).mappings ?? []
   return MappingSchema.parse(raw)

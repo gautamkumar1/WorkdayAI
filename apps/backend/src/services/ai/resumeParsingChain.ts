@@ -1,7 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai'
 import { ChatPromptTemplate } from '@langchain/core/prompts'
 import { JsonOutputParser } from '@langchain/core/output_parsers'
-import { RunnableSequence } from '@langchain/core/runnables'
 import { z } from 'zod'
 import { getDefaultModel, getMaxTokens } from './openaiClient'
 
@@ -36,32 +35,27 @@ Return ONLY valid JSON matching this schema exactly:
 }}
 Return null for missing fields. Return empty arrays when no items found. Never include explanation text outside the JSON.`
 
-function buildChain() {
-  const model = new ChatOpenAI({
-    model: getDefaultModel(),
-    temperature: 0,
-    maxTokens: getMaxTokens(),
-  })
+const parser = new JsonOutputParser()
 
+async function invokeChain(rawText: string): Promise<unknown> {
+  const model = new ChatOpenAI({ model: getDefaultModel(), temperature: 0, maxTokens: getMaxTokens() })
   const prompt = ChatPromptTemplate.fromMessages([
     ['system', SYSTEM_PROMPT],
     ['human', 'Resume text:\n{rawText}'],
   ])
-
-  return RunnableSequence.from([prompt, model, new JsonOutputParser()])
+  const messages = await prompt.invoke({ rawText })
+  const response = await model.invoke(messages)
+  return parser.invoke(response)
 }
 
 export async function parseResumeWithAI(rawText: string): Promise<ParsedResume> {
-  const chain = buildChain()
-
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const output = await chain.invoke({ rawText })
+      const output = await invokeChain(rawText)
       return ResumeSchema.parse(output)
     } catch {
       if (attempt === 2) throw new Error('Failed to parse resume after 3 attempts')
     }
   }
-
   throw new Error('Unreachable')
 }

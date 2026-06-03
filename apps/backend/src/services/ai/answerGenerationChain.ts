@@ -1,7 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai'
 import { ChatPromptTemplate } from '@langchain/core/prompts'
 import { JsonOutputParser } from '@langchain/core/output_parsers'
-import { RunnableSequence } from '@langchain/core/runnables'
 import { z } from 'zod'
 import { getDefaultModel, getMaxTokens } from './openaiClient'
 
@@ -32,32 +31,24 @@ Rules:
 - Keep answers concise and professional
 - Return ONLY the JSON object, no explanation text`
 
-function buildChain() {
-  const model = new ChatOpenAI({
-    model: getDefaultModel(),
-    temperature: 0.2,
-    maxTokens: getMaxTokens(),
-  })
+const parser = new JsonOutputParser()
 
+async function invokeChain(question: string, resumeData: string): Promise<unknown> {
+  const model = new ChatOpenAI({ model: getDefaultModel(), temperature: 0.2, maxTokens: getMaxTokens() })
   const prompt = ChatPromptTemplate.fromMessages([
     ['system', SYSTEM_PROMPT],
     ['human', 'Question: {question}\n\nResume context:\n{resumeData}'],
   ])
-
-  return RunnableSequence.from([prompt, model, new JsonOutputParser()])
+  const messages = await prompt.invoke({ question, resumeData })
+  const response = await model.invoke(messages)
+  return parser.invoke(response)
 }
 
 export async function generateAnswerWithAI(
   question: string,
   resumeData: Record<string, unknown>
 ): Promise<GeneratedAnswer> {
-  const chain = buildChain()
-
-  const output = await chain.invoke({
-    question,
-    resumeData: JSON.stringify(resumeData, null, 2),
-  })
-
+  const output = await invokeChain(question, JSON.stringify(resumeData, null, 2))
   const parsed = AnswerSchema.parse(output)
 
   // Override needsReview for sensitive topics regardless of model's assessment
