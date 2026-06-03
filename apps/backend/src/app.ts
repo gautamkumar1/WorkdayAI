@@ -6,6 +6,7 @@ import { errorHandler } from './middleware/errorHandler'
 import authRouter from './routes/auth'
 import resumesRouter from './routes/resumes'
 import aiRouter from './routes/ai'
+import applicationsRouter from './routes/applications'
 
 const app: Express = express()
 
@@ -27,6 +28,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', authRouter)
 app.use('/api/resumes', resumesRouter)
 app.use('/api/ai', aiRouter)
+app.use('/api/applications', applicationsRouter)
 
 app.use(errorHandler)
 
