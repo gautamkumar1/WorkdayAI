@@ -25,11 +25,11 @@ afterAll(async () => {
 // Create minimal valid PDF bytes for upload tests
 const minimalPdfBuffer = Buffer.from(
   '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n' +
-  '2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +
-  '3 0 obj<</Type/Page/MediaBox[0 0 612 792]>>endobj\n' +
-  'xref\n0 4\n0000000000 65535 f\n' +
-  '0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n' +
-  'trailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF'
+    '2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +
+    '3 0 obj<</Type/Page/MediaBox[0 0 612 792]>>endobj\n' +
+    'xref\n0 4\n0000000000 65535 f\n' +
+    '0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n' +
+    'trailer<</Size 4/Root 1 0 R>>\nstartxref\n190\n%%EOF',
 )
 
 describe('POST /api/resumes/upload', () => {
@@ -66,7 +66,10 @@ describe('POST /api/resumes/upload', () => {
     const res = await request(app)
       .post('/api/resumes/upload')
       .set('Authorization', `Bearer ${token}`)
-      .attach('resume', Buffer.from('plain text'), { filename: 'resume.txt', contentType: 'text/plain' })
+      .attach('resume', Buffer.from('plain text'), {
+        filename: 'resume.txt',
+        contentType: 'text/plain',
+      })
 
     expect(res.status).toBe(400)
   })
@@ -74,9 +77,7 @@ describe('POST /api/resumes/upload', () => {
 
 describe('GET /api/resumes', () => {
   it('lists resumes for the authenticated user', async () => {
-    const res = await request(app)
-      .get('/api/resumes')
-      .set('Authorization', `Bearer ${token}`)
+    const res = await request(app).get('/api/resumes').set('Authorization', `Bearer ${token}`)
 
     expect(res.status).toBe(200)
     expect(res.body.success).toBe(true)

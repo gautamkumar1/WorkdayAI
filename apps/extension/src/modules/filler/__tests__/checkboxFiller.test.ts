@@ -7,7 +7,9 @@ describe('fillCheckbox', () => {
     const el = document.createElement('input')
     el.type = 'checkbox'
     let clicked = false
-    el.addEventListener('click', () => { clicked = true })
+    el.addEventListener('click', () => {
+      clicked = true
+    })
     await fillCheckbox(el, true)
     expect(clicked).toBe(true)
   })
@@ -17,7 +19,9 @@ describe('fillCheckbox', () => {
     el.type = 'checkbox'
     el.checked = true
     let clicked = false
-    el.addEventListener('click', () => { clicked = true })
+    el.addEventListener('click', () => {
+      clicked = true
+    })
     await fillCheckbox(el, true)
     expect(clicked).toBe(false)
   })
@@ -27,7 +31,9 @@ describe('fillCheckbox', () => {
     el.type = 'checkbox'
     el.checked = true
     let clicked = false
-    el.addEventListener('click', () => { clicked = true })
+    el.addEventListener('click', () => {
+      clicked = true
+    })
     await fillCheckbox(el, false)
     expect(clicked).toBe(true)
   })

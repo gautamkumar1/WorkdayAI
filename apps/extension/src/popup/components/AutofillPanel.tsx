@@ -61,9 +61,9 @@ export default function AutofillPanel() {
 
       // 2. Scan fields on the page
       setStatusMsg('Scanning form fields…')
-      const scanRes = await sendToContentScript<{ fields: FieldDescriptor[]; error?: string }>(
-        { type: 'SCAN_FIELDS' },
-      )
+      const scanRes = await sendToContentScript<{ fields: FieldDescriptor[]; error?: string }>({
+        type: 'SCAN_FIELDS',
+      })
       if (scanRes.error) throw new Error(scanRes.error)
       const fields = scanRes.fields
       if (fields.length === 0) {
@@ -71,7 +71,9 @@ export default function AutofillPanel() {
         setStatusMsg('No fillable fields found on this page.')
         return
       }
-      setStatusMsg(`Found ${fields.length} field${fields.length !== 1 ? 's' : ''}. Mapping with AI…`)
+      setStatusMsg(
+        `Found ${fields.length} field${fields.length !== 1 ? 's' : ''}. Mapping with AI…`,
+      )
 
       // 3. Call backend to map fields → resume data
       setPhase('mapping')
@@ -135,7 +137,8 @@ export default function AutofillPanel() {
     }
   }
 
-  const canStart = !!parsedData && phase !== 'scanning' && phase !== 'mapping' && phase !== 'filling'
+  const canStart =
+    !!parsedData && phase !== 'scanning' && phase !== 'mapping' && phase !== 'filling'
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -172,9 +175,7 @@ export default function AutofillPanel() {
       </button>
 
       {/* Status message */}
-      {statusMsg && phase !== 'error' && (
-        <p className="text-xs text-gray-600">{statusMsg}</p>
-      )}
+      {statusMsg && phase !== 'error' && <p className="text-xs text-gray-600">{statusMsg}</p>}
 
       {/* Error */}
       {error && (
@@ -191,9 +192,15 @@ export default function AutofillPanel() {
               ✓ {fillResults.filter((r) => r.status === 'success').length} filled
             </span>
           )}
-          {fillResults.filter((r) => r.status === 'failed' || r.status === 'manual_required').length > 0 && (
+          {fillResults.filter((r) => r.status === 'failed' || r.status === 'manual_required')
+            .length > 0 && (
             <span className="rounded-md bg-red-50 px-2.5 py-1 text-xs text-red-800">
-              ✗ {fillResults.filter((r) => r.status === 'failed' || r.status === 'manual_required').length} failed
+              ✗{' '}
+              {
+                fillResults.filter((r) => r.status === 'failed' || r.status === 'manual_required')
+                  .length
+              }{' '}
+              failed
             </span>
           )}
         </div>

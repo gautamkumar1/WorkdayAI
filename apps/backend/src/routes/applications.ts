@@ -50,7 +50,15 @@ router.get('/', requireAuth, async (req, res, next) => {
     const applications = await prisma.application.findMany({
       where: { userId: req.user!.userId },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, jobUrl: true, jobTitle: true, company: true, status: true, createdAt: true, updatedAt: true },
+      select: {
+        id: true,
+        jobUrl: true,
+        jobTitle: true,
+        company: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     })
     res.json({ success: true, data: applications })
   } catch (err) {

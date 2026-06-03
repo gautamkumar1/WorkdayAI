@@ -10,10 +10,7 @@ describe('withRetry', () => {
   })
 
   it('retries on failure, returns result on second attempt', async () => {
-    const fn = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('fail'))
-      .mockResolvedValue('ok')
+    const fn = vi.fn().mockRejectedValueOnce(new Error('fail')).mockResolvedValue('ok')
     const result = await withRetry(fn, 3, 0)
     expect(result).toBe('ok')
     expect(fn).toHaveBeenCalledTimes(2)

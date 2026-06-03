@@ -13,7 +13,14 @@ const AnswerSchema = z.object({
 
 export type GeneratedAnswer = z.infer<typeof AnswerSchema>
 
-const SENSITIVE_KEYWORDS = ['salary', 'compensation', 'visa', 'authorization', 'clearance', 'sponsorship']
+const SENSITIVE_KEYWORDS = [
+  'salary',
+  'compensation',
+  'visa',
+  'authorization',
+  'clearance',
+  'sponsorship',
+]
 
 const SYSTEM_PROMPT = `You are a job application assistant. Answer application questions using the provided resume context.
 
@@ -34,7 +41,11 @@ Rules:
 const parser = new JsonOutputParser()
 
 async function invokeChain(question: string, resumeData: string): Promise<unknown> {
-  const model = new ChatOpenAI({ model: getDefaultModel(), temperature: 0.2, maxTokens: getMaxTokens() })
+  const model = new ChatOpenAI({
+    model: getDefaultModel(),
+    temperature: 0.2,
+    maxTokens: getMaxTokens(),
+  })
   const prompt = ChatPromptTemplate.fromMessages([
     ['system', SYSTEM_PROMPT],
     ['human', 'Question: {question}\n\nResume context:\n{resumeData}'],
@@ -46,7 +57,7 @@ async function invokeChain(question: string, resumeData: string): Promise<unknow
 
 export async function generateAnswerWithAI(
   question: string,
-  resumeData: Record<string, unknown>
+  resumeData: Record<string, unknown>,
 ): Promise<GeneratedAnswer> {
   const output = await invokeChain(question, JSON.stringify(resumeData, null, 2))
   const parsed = AnswerSchema.parse(output)

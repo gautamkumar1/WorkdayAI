@@ -8,7 +8,8 @@ export interface RawFieldData {
 
 function toFieldType(rawType: string, tagName: string): FieldType {
   if (tagName === 'TEXTAREA') return 'textarea'
-  if (tagName === 'SELECT' || rawType === 'select-one' || rawType === 'select-multiple') return 'dropdown'
+  if (tagName === 'SELECT' || rawType === 'select-one' || rawType === 'select-multiple')
+    return 'dropdown'
   switch (rawType) {
     case 'date':
     case 'datetime-local':
@@ -25,7 +26,10 @@ function toFieldType(rawType: string, tagName: string): FieldType {
 }
 
 function normalizeLabel(raw: string): string {
-  return raw.trim().replace(/\s+/g, ' ').replace(/\s*\*+\s*$/, '')
+  return raw
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\*+\s*$/, '')
 }
 
 export function normalizeField(raw: RawFieldData): FieldDescriptor {
@@ -35,7 +39,8 @@ export function normalizeField(raw: RawFieldData): FieldDescriptor {
   const automationId = element.getAttribute('data-automation-id')
   const ariaLabel = element.getAttribute('aria-label')
   const placeholder = element.getAttribute('placeholder')
-  const required = element.hasAttribute('required') || element.getAttribute('aria-required') === 'true'
+  const required =
+    element.hasAttribute('required') || element.getAttribute('aria-required') === 'true'
   const currentValue = (element as HTMLInputElement).value || null
 
   let options: string[] | null = null

@@ -86,7 +86,10 @@ export default function LoginForm() {
       <p className="text-center text-xs text-gray-500">
         {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
         <button
-          onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null) }}
+          onClick={() => {
+            setMode(mode === 'login' ? 'register' : 'login')
+            setError(null)
+          }}
           className="text-blue-600 hover:underline"
         >
           {mode === 'login' ? 'Create one' : 'Sign in'}

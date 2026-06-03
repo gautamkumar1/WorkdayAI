@@ -108,9 +108,7 @@ describe('executeFillPlan', () => {
   it('retries on failure and succeeds on second attempt', async () => {
     const el = document.createElement('input')
     mockFindByAutomation.mockReturnValue(el)
-    mockFillTextField
-      .mockRejectedValueOnce(new Error('transient'))
-      .mockResolvedValueOnce(undefined)
+    mockFillTextField.mockRejectedValueOnce(new Error('transient')).mockResolvedValueOnce(undefined)
     const results = await executeFillPlan([makeMapping()], 0)
     expect(results[0]!.status).toBe('success')
     expect(results[0]!.attempts).toBe(2)

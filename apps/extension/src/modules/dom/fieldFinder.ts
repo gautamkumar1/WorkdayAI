@@ -21,11 +21,7 @@ export function findFieldByPlaceholder(placeholder: string): Element | null {
 }
 
 function normalizeLabel(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/\*$/, '')
-    .trim()
-    .replace(/\s+/g, '-')
+  return text.toLowerCase().replace(/\*$/, '').trim().replace(/\s+/g, '-')
 }
 
 function stripAsterisk(text: string): string {

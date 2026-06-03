@@ -66,7 +66,9 @@ export default function App() {
         }
         return (
           <div className="p-4">
-            <p className="text-sm text-gray-500">No active application. Open a Workday job posting to begin.</p>
+            <p className="text-sm text-gray-500">
+              No active application. Open a Workday job posting to begin.
+            </p>
           </div>
         )
 
@@ -90,9 +92,7 @@ export default function App() {
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        {renderContent()}
-      </div>
+      <div className="flex-1 overflow-y-auto min-h-0">{renderContent()}</div>
 
       {/* Bottom tab bar */}
       <div className="shrink-0 flex border-t border-gray-200 bg-white">

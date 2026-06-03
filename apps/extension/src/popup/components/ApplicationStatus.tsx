@@ -40,7 +40,9 @@ export default function ApplicationStatus() {
   if (!fillPlan) {
     return (
       <div className="p-4">
-        <p className="text-sm text-gray-500">No active application. Open a Workday job posting to begin.</p>
+        <p className="text-sm text-gray-500">
+          No active application. Open a Workday job posting to begin.
+        </p>
       </div>
     )
   }

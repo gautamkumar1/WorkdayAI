@@ -13,7 +13,9 @@ const parseResumeSchema = z.object({
 })
 
 const mapFieldsSchema = z.object({
-  fields: z.array(z.object({ label: z.string(), type: z.string(), options: z.array(z.string()).optional() })),
+  fields: z.array(
+    z.object({ label: z.string(), type: z.string(), options: z.array(z.string()).optional() }),
+  ),
   resumeData: z.record(z.string(), z.unknown()),
 })
 
@@ -35,7 +37,10 @@ router.post('/parse-resume', requireAuth, validate(parseResumeSchema), async (re
 router.post('/map-fields', requireAuth, validate(mapFieldsSchema), async (req, res, next) => {
   try {
     const { fields, resumeData } = req.body as z.infer<typeof mapFieldsSchema>
-    const mappings = await mapFieldsWithAI(fields as Parameters<typeof mapFieldsWithAI>[0], resumeData)
+    const mappings = await mapFieldsWithAI(
+      fields as Parameters<typeof mapFieldsWithAI>[0],
+      resumeData,
+    )
 
     const needsReview = mappings.filter((m) => m.confidence < 0.6)
     res.json({ success: true, data: { mappings, needsReview } })
@@ -44,14 +49,19 @@ router.post('/map-fields', requireAuth, validate(mapFieldsSchema), async (req, r
   }
 })
 
-router.post('/answer-question', requireAuth, validate(answerQuestionSchema), async (req, res, next) => {
-  try {
-    const { question, resumeData } = req.body as z.infer<typeof answerQuestionSchema>
-    const result = await generateAnswerWithAI(question, resumeData)
-    res.json({ success: true, data: result })
-  } catch (err) {
-    next(err)
-  }
-})
+router.post(
+  '/answer-question',
+  requireAuth,
+  validate(answerQuestionSchema),
+  async (req, res, next) => {
+    try {
+      const { question, resumeData } = req.body as z.infer<typeof answerQuestionSchema>
+      const result = await generateAnswerWithAI(question, resumeData)
+      res.json({ success: true, data: result })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
 
 export default router

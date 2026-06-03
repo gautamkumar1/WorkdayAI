@@ -25,38 +25,43 @@ const upload = multer({
   },
 })
 
-router.post('/upload', requireAuth, (req, res, next) => {
-  upload.single('resume')(req, res, (err) => {
-    if (err) return next(err)
-    if (!req.file) {
-      return next(ApiError.badRequest('No file uploaded'))
-    }
-    next()
-  })
-}, async (req, res, next) => {
-  try {
-    const file = req.file!
-    let rawText = ''
-    try {
-      rawText = await extractText(file.buffer, file.mimetype)
-    } catch {
-      rawText = ''
-    }
-
-    const resume = await prisma.resume.create({
-      data: {
-        userId: req.user!.userId,
-        filename: file.originalname,
-        rawText,
-        parsedData: {},
-      },
+router.post(
+  '/upload',
+  requireAuth,
+  (req, res, next) => {
+    upload.single('resume')(req, res, (err) => {
+      if (err) return next(err)
+      if (!req.file) {
+        return next(ApiError.badRequest('No file uploaded'))
+      }
+      next()
     })
+  },
+  async (req, res, next) => {
+    try {
+      const file = req.file!
+      let rawText = ''
+      try {
+        rawText = await extractText(file.buffer, file.mimetype)
+      } catch {
+        rawText = ''
+      }
 
-    res.status(201).json({ success: true, data: resume })
-  } catch (err) {
-    next(err)
-  }
-})
+      const resume = await prisma.resume.create({
+        data: {
+          userId: req.user!.userId,
+          filename: file.originalname,
+          rawText,
+          parsedData: {},
+        },
+      })
+
+      res.status(201).json({ success: true, data: resume })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
 
 router.get('/', requireAuth, async (req, res, next) => {
   try {

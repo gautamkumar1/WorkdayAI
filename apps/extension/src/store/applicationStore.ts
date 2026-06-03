@@ -36,10 +36,7 @@ export const useApplicationStore = create<ApplicationState>((set) => ({
 
   updateFillResult: (result) =>
     set((state) => ({
-      fillResults: [
-        ...state.fillResults.filter((r) => r.fieldLabel !== result.fieldLabel),
-        result,
-      ],
+      fillResults: [...state.fillResults.filter((r) => r.fieldLabel !== result.fieldLabel), result],
     })),
 
   setStep: (step) => set({ currentStep: step }),

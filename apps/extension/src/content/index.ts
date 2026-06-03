@@ -17,17 +17,15 @@ type ContentMessage =
 
 let cleanupMutationWatcher: (() => void) | null = null
 
-chrome.runtime.onMessage.addListener(
-  (message: ContentMessage, _sender, sendResponse) => {
-    handleContentMessage(message)
-      .then(sendResponse)
-      .catch((err: unknown) => {
-        const error = err instanceof Error ? err.message : String(err)
-        sendResponse({ error })
-      })
-    return true
-  },
-)
+chrome.runtime.onMessage.addListener((message: ContentMessage, _sender, sendResponse) => {
+  handleContentMessage(message)
+    .then(sendResponse)
+    .catch((err: unknown) => {
+      const error = err instanceof Error ? err.message : String(err)
+      sendResponse({ error })
+    })
+  return true
+})
 
 async function handleContentMessage(message: ContentMessage): Promise<unknown> {
   switch (message.type) {
@@ -38,10 +36,7 @@ async function handleContentMessage(message: ContentMessage): Promise<unknown> {
     }
 
     case 'EXECUTE_FILL': {
-      const results: FillResult[] = await executeFillPlan(
-        message.mappings,
-        message.delayMs,
-      )
+      const results: FillResult[] = await executeFillPlan(message.mappings, message.delayMs)
       return { results }
     }
 

@@ -7,7 +7,10 @@ export function validate<T extends z.ZodTypeAny>(schema: T) {
     if (!result.success) {
       res.status(400).json({
         success: false,
-        error: { code: 'VALIDATION_ERROR', message: result.error.issues[0]?.message ?? 'Invalid input' },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: result.error.issues[0]?.message ?? 'Invalid input',
+        },
       })
       return
     }

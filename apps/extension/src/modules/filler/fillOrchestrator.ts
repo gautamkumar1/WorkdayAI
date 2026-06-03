@@ -4,11 +4,7 @@ import { fillDropdown } from './dropdownFiller.js'
 import { fillDateField } from './dateFiller.js'
 import { fillRadio } from './radioFiller.js'
 import { fillCheckbox } from './checkboxFiller.js'
-import {
-  findFieldByAutomationId,
-  findFieldByAriaLabel,
-  findFieldByLabel,
-} from '../dom/fieldFinder'
+import { findFieldByAutomationId, findFieldByAriaLabel, findFieldByLabel } from '../dom/fieldFinder'
 import { highlightField } from '../dom/fieldHighlighter'
 
 function randomDelay(min = 150, max = 300): number {

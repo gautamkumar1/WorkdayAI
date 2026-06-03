@@ -12,10 +12,7 @@ function injectStyles(): void {
   document.head.appendChild(style)
 }
 
-export function highlightField(
-  element: Element,
-  type: 'success' | 'error' | 'pending',
-): void {
+export function highlightField(element: Element, type: 'success' | 'error' | 'pending'): void {
   injectStyles()
   element.setAttribute('data-wai-highlight', type)
 }

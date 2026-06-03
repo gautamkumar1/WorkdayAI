@@ -11,7 +11,15 @@ const validParsedResume = {
   phone: '555-9876',
   location: 'Seattle, WA',
   summary: 'Senior software engineer.',
-  experience: [{ title: 'Engineer', company: 'ACME', startDate: '2020-01', endDate: null, description: 'Built things' }],
+  experience: [
+    {
+      title: 'Engineer',
+      company: 'ACME',
+      startDate: '2020-01',
+      endDate: null,
+      description: 'Built things',
+    },
+  ],
   education: [{ degree: 'B.S. CS', institution: 'UW', graduationYear: '2019' }],
   skills: ['TypeScript', 'Node.js'],
   certifications: ['AWS Solutions Architect'],
@@ -82,7 +90,9 @@ describe('parseResumeWithAI', () => {
 
   it('retries up to 3 times on failure then throws', async () => {
     mockPromptInvoke.mockRejectedValue(new Error('OpenAI timeout'))
-    await expect(parseResumeWithAI('bad input')).rejects.toThrow('Failed to parse resume after 3 attempts')
+    await expect(parseResumeWithAI('bad input')).rejects.toThrow(
+      'Failed to parse resume after 3 attempts',
+    )
     expect(mockPromptInvoke).toHaveBeenCalledTimes(3)
   })
 
@@ -100,7 +110,12 @@ describe('parseResumeWithAI', () => {
 describe('mapFieldsWithAI', () => {
   const highConfMappings = [
     { fieldLabel: 'First Name', value: 'Jane', confidence: 0.98, reasoning: 'Direct name match' },
-    { fieldLabel: 'Email Address', value: 'jane@example.com', confidence: 0.99, reasoning: 'Direct email match' },
+    {
+      fieldLabel: 'Email Address',
+      value: 'jane@example.com',
+      confidence: 0.99,
+      reasoning: 'Direct email match',
+    },
   ]
 
   beforeEach(() => {
@@ -111,7 +126,10 @@ describe('mapFieldsWithAI', () => {
   })
 
   it('returns mapped fields for standard form fields', async () => {
-    const fields = [{ label: 'First Name', type: 'text' }, { label: 'Email Address', type: 'text' }]
+    const fields = [
+      { label: 'First Name', type: 'text' },
+      { label: 'Email Address', type: 'text' },
+    ]
     const result = await mapFieldsWithAI(fields, { name: 'Jane Smith', email: 'jane@example.com' })
     expect(result).toHaveLength(2)
     expect(result[0]!.fieldLabel).toBe('First Name')
@@ -122,7 +140,12 @@ describe('mapFieldsWithAI', () => {
     setupMocks({
       mappings: [
         ...highConfMappings,
-        { fieldLabel: 'Years of Gap', value: '', confidence: 0.3, reasoning: 'Cannot determine from resume' },
+        {
+          fieldLabel: 'Years of Gap',
+          value: '',
+          confidence: 0.3,
+          reasoning: 'Cannot determine from resume',
+        },
       ],
     })
     const fields = [
@@ -138,29 +161,55 @@ describe('mapFieldsWithAI', () => {
 
   it('handles unusual field labels via semantic inference', async () => {
     setupMocks({
-      mappings: [{ fieldLabel: 'Given Name', value: 'Jane', confidence: 0.72, reasoning: 'Inferred as first name' }],
+      mappings: [
+        {
+          fieldLabel: 'Given Name',
+          value: 'Jane',
+          confidence: 0.72,
+          reasoning: 'Inferred as first name',
+        },
+      ],
     })
-    const result = await mapFieldsWithAI([{ label: 'Given Name', type: 'text' }], { name: 'Jane Smith' })
+    const result = await mapFieldsWithAI([{ label: 'Given Name', type: 'text' }], {
+      name: 'Jane Smith',
+    })
     expect(result[0]!.value).toBe('Jane')
     expect(result[0]!.confidence).toBeGreaterThan(0.6)
   })
 
   it('handles dropdown fields by returning one of the provided options', async () => {
     setupMocks({
-      mappings: [{ fieldLabel: 'Country', value: 'United States', confidence: 0.91, reasoning: 'Matched location country' }],
+      mappings: [
+        {
+          fieldLabel: 'Country',
+          value: 'United States',
+          confidence: 0.91,
+          reasoning: 'Matched location country',
+        },
+      ],
     })
     const result = await mapFieldsWithAI(
       [{ label: 'Country', type: 'dropdown', options: ['United States', 'Canada', 'Other'] }],
-      { location: 'Seattle, WA, United States' }
+      { location: 'Seattle, WA, United States' },
     )
     expect(result[0]!.value).toBe('United States')
   })
 
   it('handles missing resume data with zero-confidence placeholders', async () => {
     setupMocks({
-      mappings: [{ fieldLabel: 'Security Clearance Level', value: '', confidence: 0.0, reasoning: 'Not found' }],
+      mappings: [
+        {
+          fieldLabel: 'Security Clearance Level',
+          value: '',
+          confidence: 0.0,
+          reasoning: 'Not found',
+        },
+      ],
     })
-    const result = await mapFieldsWithAI([{ label: 'Security Clearance Level', type: 'dropdown' }], {})
+    const result = await mapFieldsWithAI(
+      [{ label: 'Security Clearance Level', type: 'dropdown' }],
+      {},
+    )
     expect(result[0]!.confidence).toBe(0)
     expect(result[0]!.value).toBe('')
   })
@@ -253,9 +302,9 @@ describe('buildFillPlan', () => {
 
   it('returns a complete fill plan with parsed resume, mappings, answers, and needsReview', async () => {
     mockParserInvoke
-      .mockResolvedValueOnce(validParsedResume)           // parseResumeWithAI
+      .mockResolvedValueOnce(validParsedResume) // parseResumeWithAI
       .mockResolvedValueOnce({ mappings: highConfMappings }) // mapFieldsWithAI
-      .mockResolvedValueOnce(answerFixture)              // generateAnswerWithAI
+      .mockResolvedValueOnce(answerFixture) // generateAnswerWithAI
 
     const plan = await buildFillPlan({
       rawResumeText: 'Jane Smith resume...',
@@ -284,7 +333,10 @@ describe('buildFillPlan', () => {
 
     const plan = await buildFillPlan({
       rawResumeText: 'Jane Smith resume...',
-      formFields: [{ label: 'First Name', type: 'text' }, { label: 'Email', type: 'text' }],
+      formFields: [
+        { label: 'First Name', type: 'text' },
+        { label: 'Email', type: 'text' },
+      ],
     })
 
     expect(plan.needsReview).toHaveLength(0)

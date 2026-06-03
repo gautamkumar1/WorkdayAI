@@ -22,9 +22,7 @@ export default function ErrorPanel() {
             className="rounded-md border border-red-200 bg-red-50 px-3 py-2 flex flex-col gap-0.5"
           >
             <p className="text-xs font-medium text-red-800">{result.fieldLabel}</p>
-            {result.error && (
-              <p className="text-xs text-red-600">{result.error}</p>
-            )}
+            {result.error && <p className="text-xs text-red-600">{result.error}</p>}
             <p className="text-xs text-gray-500 italic">Please fill this field manually.</p>
           </div>
         ))}

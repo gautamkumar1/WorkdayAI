@@ -96,9 +96,7 @@ describe('GET /api/auth/me', () => {
       .send({ email: 'me@example.com', password: 'password123' })
     const token = reg.body.data.token
 
-    const res = await request(app)
-      .get('/api/auth/me')
-      .set('Authorization', `Bearer ${token}`)
+    const res = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`)
 
     expect(res.status).toBe(200)
     expect(res.body.data.email).toBe('me@example.com')

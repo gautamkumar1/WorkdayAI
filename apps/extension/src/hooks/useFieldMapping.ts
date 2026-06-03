@@ -16,13 +16,9 @@ export function useFieldMapping(): UseMutationResult<FieldMapping[], Error, MapF
 
   return useMutation<FieldMapping[], Error, MapFieldsInput>({
     mutationFn: async (input: MapFieldsInput) => {
-      const { data } = await axios.post<FieldMapping[]>(
-        `${apiBaseUrl}/api/ai/map-fields`,
-        input,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        },
-      )
+      const { data } = await axios.post<FieldMapping[]>(`${apiBaseUrl}/api/ai/map-fields`, input, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
       return data
     },
   })

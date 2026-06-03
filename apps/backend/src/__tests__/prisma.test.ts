@@ -5,7 +5,8 @@ let prisma: PrismaClient
 
 beforeAll(() => {
   const adapter = new PrismaPg({
-    connectionString: process.env['DATABASE_URL_TEST'] ?? 'postgresql://mac@localhost:5432/workday_ai_test',
+    connectionString:
+      process.env['DATABASE_URL_TEST'] ?? 'postgresql://mac@localhost:5432/workday_ai_test',
   })
   prisma = new PrismaClient({ adapter })
 })
@@ -36,7 +37,7 @@ describe('User model', () => {
   it('enforces unique email constraint', async () => {
     await prisma.user.create({ data: { email: 'dup@test.com', passwordHash: 'h' } })
     await expect(
-      prisma.user.create({ data: { email: 'dup@test.com', passwordHash: 'h' } })
+      prisma.user.create({ data: { email: 'dup@test.com', passwordHash: 'h' } }),
     ).rejects.toThrow()
   })
 })

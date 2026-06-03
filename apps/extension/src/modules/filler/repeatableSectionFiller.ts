@@ -27,7 +27,12 @@ function findAddButton(): HTMLElement | null {
 }
 
 async function fillSingleField(mapping: FieldMapping): Promise<FillResult> {
-  const result: FillResult = { fieldLabel: mapping.fieldLabel, status: 'failed', error: null, attempts: 1 }
+  const result: FillResult = {
+    fieldLabel: mapping.fieldLabel,
+    status: 'failed',
+    error: null,
+    attempts: 1,
+  }
 
   const el =
     document.querySelector<HTMLElement>(`[data-automation-id="${mapping.fieldLabel}"]`) ??

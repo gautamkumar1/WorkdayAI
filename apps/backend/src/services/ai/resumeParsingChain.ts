@@ -38,7 +38,11 @@ Return null for missing fields. Return empty arrays when no items found. Never i
 const parser = new JsonOutputParser()
 
 async function invokeChain(rawText: string): Promise<unknown> {
-  const model = new ChatOpenAI({ model: getDefaultModel(), temperature: 0, maxTokens: getMaxTokens() })
+  const model = new ChatOpenAI({
+    model: getDefaultModel(),
+    temperature: 0,
+    maxTokens: getMaxTokens(),
+  })
   const prompt = ChatPromptTemplate.fromMessages([
     ['system', SYSTEM_PROMPT],
     ['human', 'Resume text:\n{rawText}'],

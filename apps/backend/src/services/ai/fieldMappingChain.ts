@@ -36,7 +36,11 @@ Rules:
 const parser = new JsonOutputParser()
 
 async function invokeChain(fields: string, resumeData: string): Promise<unknown> {
-  const model = new ChatOpenAI({ model: getDefaultModel(), temperature: 0, maxTokens: getMaxTokens() })
+  const model = new ChatOpenAI({
+    model: getDefaultModel(),
+    temperature: 0,
+    maxTokens: getMaxTokens(),
+  })
   const prompt = ChatPromptTemplate.fromMessages([
     ['system', SYSTEM_PROMPT],
     ['human', 'Form fields:\n{fields}\n\nResume data:\n{resumeData}\n\nMap each field.'],
@@ -48,13 +52,13 @@ async function invokeChain(fields: string, resumeData: string): Promise<unknown>
 
 export async function mapFieldsWithAI(
   fields: FieldDescriptor[],
-  resumeData: Record<string, unknown>
+  resumeData: Record<string, unknown>,
 ): Promise<FieldMappingResult> {
   const output = (await invokeChain(
     JSON.stringify(fields, null, 2),
-    JSON.stringify(resumeData, null, 2)
+    JSON.stringify(resumeData, null, 2),
   )) as { mappings?: unknown[] } | unknown[]
 
-  const raw = Array.isArray(output) ? output : (output as { mappings?: unknown[] }).mappings ?? []
+  const raw = Array.isArray(output) ? output : ((output as { mappings?: unknown[] }).mappings ?? [])
   return MappingSchema.parse(raw)
 }

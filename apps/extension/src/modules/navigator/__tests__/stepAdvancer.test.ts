@@ -38,7 +38,9 @@ describe('advanceToNextStep', () => {
     const btn = document.createElement('button')
     btn.setAttribute('data-automation-id', 'bottom-navigation-next-button')
     let clicked = false
-    btn.addEventListener('click', () => { clicked = true })
+    btn.addEventListener('click', () => {
+      clicked = true
+    })
     document.body.appendChild(btn)
 
     const promise = advanceToNextStep()
@@ -51,7 +53,9 @@ describe('advanceToNextStep', () => {
     const btn = document.createElement('button')
     btn.textContent = 'Save and Continue'
     let clicked = false
-    btn.addEventListener('click', () => { clicked = true })
+    btn.addEventListener('click', () => {
+      clicked = true
+    })
     document.body.appendChild(btn)
 
     const promise = advanceToNextStep()
@@ -64,7 +68,9 @@ describe('advanceToNextStep', () => {
     const btn = document.createElement('button')
     btn.textContent = 'Next'
     let clicked = false
-    btn.addEventListener('click', () => { clicked = true })
+    btn.addEventListener('click', () => {
+      clicked = true
+    })
     document.body.appendChild(btn)
 
     const promise = advanceToNextStep()

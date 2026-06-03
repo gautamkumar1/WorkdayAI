@@ -87,7 +87,7 @@ const STANDARD_FIELD_CASES: Array<{ label: string; expectedValue: string; fieldT
   { label: 'Most Recent Job Title', expectedValue: 'Software Engineer II' },
   { label: 'Current Company', expectedValue: 'TechCorp' },
   { label: 'Years of Experience', expectedValue: '5' },
-  { label: 'Highest Education Level', expectedValue: 'Bachelor\'s Degree', fieldType: 'dropdown' },
+  { label: 'Highest Education Level', expectedValue: "Bachelor's Degree", fieldType: 'dropdown' },
   { label: 'Degree', expectedValue: 'B.S. Computer Science' },
   { label: 'University / College', expectedValue: 'UW' },
   { label: 'Graduation Year', expectedValue: '2019' },
@@ -125,7 +125,10 @@ describe('mapFieldsWithAI — confidence thresholds', () => {
 
   it('passes through low-confidence mapping (<0.6)', async () => {
     setupMockMappings([makeMapping('Cover Letter', '', 0.0)])
-    const [result] = await mapFieldsWithAI([{ label: 'Cover Letter', type: 'textarea' }], resumeData)
+    const [result] = await mapFieldsWithAI(
+      [{ label: 'Cover Letter', type: 'textarea' }],
+      resumeData,
+    )
     expect(result!.confidence).toBeLessThan(0.6)
     expect(result!.value).toBe('')
   })

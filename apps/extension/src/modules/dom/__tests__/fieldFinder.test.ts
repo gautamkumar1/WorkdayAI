@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest'
-import {
-  findFieldByAutomationId,
-  findFieldByAriaLabel,
-  findFieldByLabel,
-} from '../fieldFinder'
+import { findFieldByAutomationId, findFieldByAriaLabel, findFieldByLabel } from '../fieldFinder'
 
 beforeEach(() => {
   document.body.innerHTML = ''

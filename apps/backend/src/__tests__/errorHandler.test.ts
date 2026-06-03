@@ -6,7 +6,11 @@ import { ApiError } from '../utils/apiError'
 function makeApp(throwFn: () => void) {
   const app = express()
   app.get('/test', (_req, _res, next) => {
-    try { throwFn() } catch (e) { next(e) }
+    try {
+      throwFn()
+    } catch (e) {
+      next(e)
+    }
   })
   app.use(errorHandler)
   return app
@@ -14,7 +18,9 @@ function makeApp(throwFn: () => void) {
 
 describe('errorHandler middleware', () => {
   it('returns structured error for ApiError', async () => {
-    const app = makeApp(() => { throw ApiError.notFound('Item missing') })
+    const app = makeApp(() => {
+      throw ApiError.notFound('Item missing')
+    })
     const res = await request(app).get('/test')
     expect(res.status).toBe(404)
     expect(res.body.success).toBe(false)
@@ -23,7 +29,9 @@ describe('errorHandler middleware', () => {
   })
 
   it('returns 500 for unknown errors', async () => {
-    const app = makeApp(() => { throw new Error('Something broke') })
+    const app = makeApp(() => {
+      throw new Error('Something broke')
+    })
     const res = await request(app).get('/test')
     expect(res.status).toBe(500)
     expect(res.body.success).toBe(false)

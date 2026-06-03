@@ -27,8 +27,7 @@ export const useResumeStore = create<ResumeState>((set) => ({
   setParsed: (rawText, parsedData) =>
     set({ rawText, parsedData, parseStatus: 'done', parseError: null }),
 
-  setParseError: (error) =>
-    set({ parseStatus: 'error', parseError: error }),
+  setParseError: (error) => set({ parseStatus: 'error', parseError: error }),
 
   clearResume: () =>
     set({

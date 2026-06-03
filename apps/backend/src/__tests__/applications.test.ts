@@ -33,7 +33,11 @@ describe('POST /api/applications', () => {
     const res = await request(app)
       .post('/api/applications')
       .set('Authorization', `Bearer ${token}`)
-      .send({ resumeId, jobUrl: 'https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/US-CA/Engineer_JR001' })
+      .send({
+        resumeId,
+        jobUrl:
+          'https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite/job/US-CA/Engineer_JR001',
+      })
 
     expect(res.status).toBe(201)
     expect(res.body.success).toBe(true)
@@ -70,9 +74,7 @@ describe('POST /api/applications', () => {
 
 describe('GET /api/applications', () => {
   it('lists applications for the authenticated user', async () => {
-    const res = await request(app)
-      .get('/api/applications')
-      .set('Authorization', `Bearer ${token}`)
+    const res = await request(app).get('/api/applications').set('Authorization', `Bearer ${token}`)
 
     expect(res.status).toBe(200)
     expect(Array.isArray(res.body.data)).toBe(true)
@@ -92,7 +94,12 @@ describe('GET /api/applications/:id', () => {
         resumeId,
         jobUrl: 'https://example.myworkdayjobs.com/job/2',
         fieldMappings: {
-          create: { fieldLabel: 'First Name', fieldType: 'text', mappedValue: 'John', confidence: 0.95 },
+          create: {
+            fieldLabel: 'First Name',
+            fieldType: 'text',
+            mappedValue: 'John',
+            confidence: 0.95,
+          },
         },
       },
     })
@@ -153,7 +160,12 @@ describe('GET /api/applications/:id/field-mappings', () => {
         fieldMappings: {
           createMany: {
             data: [
-              { fieldLabel: 'First Name', fieldType: 'text', mappedValue: 'John', confidence: 0.95 },
+              {
+                fieldLabel: 'First Name',
+                fieldType: 'text',
+                mappedValue: 'John',
+                confidence: 0.95,
+              },
               { fieldLabel: 'Salary', fieldType: 'text', mappedValue: '', confidence: 0.3 },
             ],
           },

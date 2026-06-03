@@ -21,8 +21,18 @@ jest.mock('../services/ai/resumeParsingChain', () => ({
 jest.mock('../services/ai/fieldMappingChain', () => ({
   mapFieldsWithAI: jest.fn().mockResolvedValue([
     { fieldLabel: 'First Name', value: 'John', confidence: 0.98, reasoning: 'Matched name.first' },
-    { fieldLabel: 'Email Address', value: 'john@example.com', confidence: 0.99, reasoning: 'Direct email match' },
-    { fieldLabel: 'Work Authorization', value: 'Unknown', confidence: 0.4, reasoning: 'Could not determine' },
+    {
+      fieldLabel: 'Email Address',
+      value: 'john@example.com',
+      confidence: 0.99,
+      reasoning: 'Direct email match',
+    },
+    {
+      fieldLabel: 'Work Authorization',
+      value: 'Unknown',
+      confidence: 0.4,
+      reasoning: 'Could not determine',
+    },
   ]),
 }))
 
@@ -75,9 +85,7 @@ describe('POST /api/ai/parse-resume', () => {
   })
 
   it('returns 401 without auth', async () => {
-    const res = await request(app)
-      .post('/api/ai/parse-resume')
-      .send({ rawText: 'some text' })
+    const res = await request(app).post('/api/ai/parse-resume').send({ rawText: 'some text' })
 
     expect(res.status).toBe(401)
   })

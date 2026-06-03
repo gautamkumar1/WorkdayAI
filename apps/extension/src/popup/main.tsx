@@ -7,7 +7,9 @@ import './index.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: (count, err: unknown) => (err as { status?: number }).status !== 404 && count < 3 },
+    queries: {
+      retry: (count, err: unknown) => (err as { status?: number }).status !== 404 && count < 3,
+    },
     mutations: { retry: false },
   },
 })
@@ -22,5 +24,5 @@ createRoot(root).render(
         <App />
       </QueryClientProvider>
     </ErrorBoundary>
-  </React.StrictMode>
+  </React.StrictMode>,
 )

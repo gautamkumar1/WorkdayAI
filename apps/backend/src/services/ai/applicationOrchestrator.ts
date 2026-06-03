@@ -20,14 +20,14 @@ export async function buildFillPlan(input: OrchestratorInput): Promise<FillPlan>
 
   const fieldMappings = await mapFieldsWithAI(
     input.formFields,
-    parsedResume as unknown as Record<string, unknown>
+    parsedResume as unknown as Record<string, unknown>,
   )
 
   const generatedAnswers: Record<string, GeneratedAnswer> = {}
   for (const question of input.customQuestions ?? []) {
     generatedAnswers[question] = await generateAnswerWithAI(
       question,
-      parsedResume as unknown as Record<string, unknown>
+      parsedResume as unknown as Record<string, unknown>,
     )
   }
 

@@ -23,17 +23,15 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('WorkdayAI extension installed')
 })
 
-chrome.runtime.onMessage.addListener(
-  (message: ExtensionMessage, _sender, sendResponse) => {
-    handleMessage(message)
-      .then(sendResponse)
-      .catch((err: unknown) => {
-        const error = err instanceof Error ? err.message : String(err)
-        sendResponse({ error })
-      })
-    return true
-  },
-)
+chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendResponse) => {
+  handleMessage(message)
+    .then(sendResponse)
+    .catch((err: unknown) => {
+      const error = err instanceof Error ? err.message : String(err)
+      sendResponse({ error })
+    })
+  return true
+})
 
 async function handleMessage(message: ExtensionMessage): Promise<unknown> {
   switch (message.type) {

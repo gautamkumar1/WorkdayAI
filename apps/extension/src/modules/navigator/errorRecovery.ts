@@ -39,9 +39,15 @@ async function tryStrategy2(element: Element, value: string): Promise<boolean> {
 
     for (const char of value) {
       const code = char.charCodeAt(0)
-      element.dispatchEvent(new KeyboardEvent('keydown', { key: char, charCode: code, bubbles: true }))
-      element.dispatchEvent(new KeyboardEvent('keypress', { key: char, charCode: code, bubbles: true }))
-      element.dispatchEvent(new KeyboardEvent('keyup', { key: char, charCode: code, bubbles: true }))
+      element.dispatchEvent(
+        new KeyboardEvent('keydown', { key: char, charCode: code, bubbles: true }),
+      )
+      element.dispatchEvent(
+        new KeyboardEvent('keypress', { key: char, charCode: code, bubbles: true }),
+      )
+      element.dispatchEvent(
+        new KeyboardEvent('keyup', { key: char, charCode: code, bubbles: true }),
+      )
     }
 
     await delay(100)
