@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useResumeStore } from '../store/resumeStore'
 import { useApplicationStore } from '../store/applicationStore'
+import { useAuthStore } from '../store/authStore'
+import LoginForm from './components/LoginForm'
 import ResumeUpload from './components/ResumeUpload'
 import ResumePreview from './components/ResumePreview'
 import ApplicationStatus from './components/ApplicationStatus'
@@ -22,6 +24,23 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('resume')
   const { parsedData } = useResumeStore()
   const { lowConfidenceFields, fillPlan, currentStep } = useApplicationStore()
+  const { isAuthenticated, logout } = useAuthStore()
+
+  if (!isAuthenticated) {
+    return (
+      <div className="flex flex-col w-[600px] h-[500px] bg-white overflow-hidden">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 bg-white shrink-0">
+          <div className="h-6 w-6 rounded-md bg-blue-600 flex items-center justify-center">
+            <span className="text-white text-xs font-bold">W</span>
+          </div>
+          <h1 className="text-sm font-semibold text-gray-900">WorkdayAI</h1>
+        </div>
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <LoginForm />
+        </div>
+      </div>
+    )
+  }
 
   function renderContent() {
     switch (activeTab) {
@@ -62,7 +81,10 @@ export default function App() {
           <span className="text-white text-xs font-bold">W</span>
         </div>
         <h1 className="text-sm font-semibold text-gray-900">WorkdayAI</h1>
-        <span className="text-xs text-gray-400">AI-powered autofill</span>
+        <span className="text-xs text-gray-400 flex-1">AI-powered autofill</span>
+        <button onClick={logout} className="text-xs text-gray-400 hover:text-gray-700">
+          Sign out
+        </button>
       </div>
 
       {/* Scrollable content */}

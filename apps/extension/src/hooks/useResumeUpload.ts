@@ -3,6 +3,7 @@ import axios from 'axios'
 import type { ResumeData } from '@workday-ai/shared'
 import { useResumeStore } from '../store/resumeStore'
 import { useSettingsStore } from '../store/settingsStore'
+import { useAuthStore } from '../store/authStore'
 
 interface UploadResponse {
   rawText: string
@@ -12,6 +13,7 @@ interface UploadResponse {
 export function useResumeUpload(): UseMutationResult<UploadResponse, Error, File> {
   const { apiBaseUrl } = useSettingsStore()
   const { setFile, setParsed, setParseError } = useResumeStore()
+  const { token } = useAuthStore()
 
   return useMutation<UploadResponse, Error, File>({
     mutationFn: async (file: File) => {
@@ -21,7 +23,12 @@ export function useResumeUpload(): UseMutationResult<UploadResponse, Error, File
       const { data } = await axios.post<UploadResponse>(
         `${apiBaseUrl}/api/resumes/upload`,
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } },
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        },
       )
       return data
     },

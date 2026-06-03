@@ -16,7 +16,17 @@ const allowedOrigins = [
 ].filter(Boolean) as string[]
 
 app.use(helmet())
-app.use(cors({ origin: allowedOrigins, credentials: true }))
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman) and all chrome-extension:// origins
+    if (!origin || origin.startsWith('chrome-extension://') || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error(`CORS: ${origin} not allowed`))
+    }
+  },
+  credentials: true,
+}))
 app.use(morgan('combined'))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
