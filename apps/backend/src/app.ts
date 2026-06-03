@@ -3,6 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import morgan from 'morgan'
 import { errorHandler } from './middleware/errorHandler'
+import authRouter from './routes/auth'
 
 const app: Express = express()
 
@@ -20,6 +21,8 @@ app.use(express.urlencoded({ extended: true }))
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
+
+app.use('/api/auth', authRouter)
 
 app.use(errorHandler)
 

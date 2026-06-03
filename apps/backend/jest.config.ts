@@ -8,6 +8,7 @@ const config: Config = {
   transform: {
     '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
   },
+  setupFiles: ['<rootDir>/src/test-setup.ts'],
 }
 
 export default config
