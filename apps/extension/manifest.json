@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "description": "AI-powered Workday job application autofill",
   "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["*://*.myworkdayjobs.com/*"],
+  "host_permissions": [
+    "*://*.myworkdayjobs.com/*",
+    "http://localhost:3000/*"
+  ],
   "action": {
     "default_popup": "src/popup/index.html",
     "default_title": "WorkdayAI",
