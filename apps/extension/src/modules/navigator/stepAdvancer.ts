@@ -1,3 +1,4 @@
+import type { WorkdayStep } from '@workday-ai/shared'
 import { detectCurrentStep } from './stepDetector'
 
 function findButtonByText(text: string): HTMLButtonElement | null {
@@ -16,8 +17,33 @@ function findButtonByAriaLabel(text: string): HTMLButtonElement | null {
   return null
 }
 
-export async function advanceToNextStep(): Promise<boolean> {
+function waitForStepChange(previousStep: WorkdayStep, previousUrl: string): Promise<WorkdayStep> {
+  return new Promise((resolve) => {
+    const maxPolls = 25 // 25 × 200ms = 5s
+    let polls = 0
+
+    const interval = setInterval(() => {
+      polls++
+      const currentUrl = window.location.href
+      const currentStep = detectCurrentStep()
+
+      if (currentUrl !== previousUrl || currentStep !== previousStep) {
+        clearInterval(interval)
+        resolve(currentStep)
+        return
+      }
+
+      if (polls >= maxPolls) {
+        clearInterval(interval)
+        resolve(currentStep)
+      }
+    }, 200)
+  })
+}
+
+export async function advanceToNextStep(): Promise<{ advanced: boolean; newStep: WorkdayStep }> {
   const currentStep = detectCurrentStep()
+  const currentUrl = window.location.href
 
   let button: Element | null = null
 
@@ -39,11 +65,14 @@ export async function advanceToNextStep(): Promise<boolean> {
     button = findButtonByAriaLabel('Next')
   }
 
-  if (!button) return false
+  if (!button) {
+    return { advanced: false, newStep: currentStep }
+  }
 
   ;(button as HTMLElement).click()
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  const newStep = await waitForStepChange(currentStep, currentUrl)
+  const advanced = newStep !== currentStep || window.location.href !== currentUrl
 
-  return true
+  return { advanced, newStep }
 }
