@@ -8,38 +8,39 @@ import { useAuthStore } from '../store/authStore'
 interface ResumeRecord {
   id: string
   rawText: string
-  parsedData: ResumeData | Record<string, never>
 }
 
-interface BackendResponse {
-  success: boolean
-  data: ResumeRecord
-}
-
-export function useResumeUpload(): UseMutationResult<ResumeRecord, Error, File> {
+export function useResumeUpload(): UseMutationResult<ResumeData, Error, File> {
   const { apiBaseUrl } = useSettingsStore()
   const { setFile, setParsed, setParseError } = useResumeStore()
   const { token } = useAuthStore()
 
-  return useMutation<ResumeRecord, Error, File>({
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {}
+
+  return useMutation<{ rawText: string; parsedData: ResumeData }, Error, File>({
     mutationFn: async (file: File) => {
       setFile(file)
+
+      // Step 1: upload file, get rawText back
       const formData = new FormData()
       formData.append('resume', file)
-      const { data } = await axios.post<BackendResponse>(
+      const uploadRes = await axios.post<{ success: boolean; data: ResumeRecord }>(
         `${apiBaseUrl}/api/resumes/upload`,
         formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        },
+        { headers: { 'Content-Type': 'multipart/form-data', ...authHeaders } },
       )
-      return data.data
+      const { rawText } = uploadRes.data.data
+
+      // Step 2: parse rawText with AI to get structured ResumeData
+      const parseRes = await axios.post<{ success: boolean; data: ResumeData }>(
+        `${apiBaseUrl}/api/ai/parse-resume`,
+        { rawText },
+        { headers: { 'Content-Type': 'application/json', ...authHeaders } },
+      )
+      return { rawText, parsedData: parseRes.data.data }
     },
-    onSuccess: (record) => {
-      setParsed(record.rawText, record.parsedData as ResumeData)
+    onSuccess: ({ rawText, parsedData }) => {
+      setParsed(rawText, parsedData)
     },
     onError: (error) => {
       setParseError(error.message)
