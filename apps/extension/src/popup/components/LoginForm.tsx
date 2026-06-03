@@ -18,11 +18,11 @@ export default function LoginForm() {
     setLoading(true)
     try {
       const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register'
-      const { data } = await axios.post<{ token: string; user: { id: string; email: string } }>(
-        `${apiBaseUrl}${endpoint}`,
-        { email, password },
-      )
-      login(data.token, data.user)
+      const { data } = await axios.post<{
+        success: boolean
+        data: { token: string; user: { id: string; email: string } }
+      }>(`${apiBaseUrl}${endpoint}`, { email, password })
+      login(data.data.token, data.data.user)
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message ?? err.message)

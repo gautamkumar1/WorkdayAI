@@ -5,22 +5,28 @@ import { useResumeStore } from '../store/resumeStore'
 import { useSettingsStore } from '../store/settingsStore'
 import { useAuthStore } from '../store/authStore'
 
-interface UploadResponse {
+interface ResumeRecord {
+  id: string
   rawText: string
-  parsedData: ResumeData
+  parsedData: ResumeData | Record<string, never>
 }
 
-export function useResumeUpload(): UseMutationResult<UploadResponse, Error, File> {
+interface BackendResponse {
+  success: boolean
+  data: ResumeRecord
+}
+
+export function useResumeUpload(): UseMutationResult<ResumeRecord, Error, File> {
   const { apiBaseUrl } = useSettingsStore()
   const { setFile, setParsed, setParseError } = useResumeStore()
   const { token } = useAuthStore()
 
-  return useMutation<UploadResponse, Error, File>({
+  return useMutation<ResumeRecord, Error, File>({
     mutationFn: async (file: File) => {
       setFile(file)
       const formData = new FormData()
       formData.append('resume', file)
-      const { data } = await axios.post<UploadResponse>(
+      const { data } = await axios.post<BackendResponse>(
         `${apiBaseUrl}/api/resumes/upload`,
         formData,
         {
@@ -30,10 +36,10 @@ export function useResumeUpload(): UseMutationResult<UploadResponse, Error, File
           },
         },
       )
-      return data
+      return data.data
     },
-    onSuccess: (data) => {
-      setParsed(data.rawText, data.parsedData)
+    onSuccess: (record) => {
+      setParsed(record.rawText, record.parsedData as ResumeData)
     },
     onError: (error) => {
       setParseError(error.message)
