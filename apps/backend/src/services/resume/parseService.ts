@@ -4,8 +4,7 @@ import mammoth from 'mammoth'
 
 export async function extractText(buffer: Buffer, mimetype: string): Promise<string> {
   if (mimetype === 'application/pdf') {
-    // pdf-parse v2 ships as CJS; call via require to avoid ESM interop issues
-    const result = await (pdfParse.default ?? pdfParse)(buffer)
+    const result = await pdfParse(buffer)
     return (result.text as string).trim()
   }
 
