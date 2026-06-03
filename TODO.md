@@ -213,97 +213,72 @@ workday-ai/
 
 ---
 
-## Phase 5 — Chrome Extension
+## Phase 5 — Chrome Extension ✅
 
 ### Manifest V3 Setup
-- [ ] Write `manifest.json`:
-  - `manifest_version: 3`
-  - permissions: `storage`, `activeTab`, `scripting`
-  - host_permissions: `*://*.myworkdayjobs.com/*`
-  - content_scripts targeting Workday URLs
-  - service_worker background script
-  - popup action pointing to React popup
-- [ ] Configure `@crxjs/vite-plugin` to bundle manifest correctly
-- [ ] Set up hot reload for extension development
+- [x] Write `manifest.json`: MV3, permissions (storage/activeTab/scripting), host_permissions, content_scripts, service_worker, popup action
+- [x] Configure Vite to bundle manifest (custom `copy-manifest` plugin in `vite.config.ts`)
+- [x] Set up hot reload for extension development (`pnpm --filter extension dev`)
 
 ### Content Script — DOM Module Architecture
 
 #### Parser Module (`src/modules/parser/`)
-- [ ] Create `pdfExtractor.ts` — extract text from PDF using pdf-lib + custom renderer
-- [ ] Create `docxExtractor.ts` — extract text from DOCX using mammoth
-- [ ] Create `resumeTextCleaner.ts` — normalize whitespace, remove headers/footers artifacts
-- [ ] Export unified `extractResumeText(file: File): Promise<string>`
+- [x] Create `pdfExtractor.ts` — client-side binary read + ASCII extraction
+- [x] Create `docxExtractor.ts` — binary read + XML tag strip + entity decode
+- [x] Create `resumeTextCleaner.ts` — normalize whitespace, remove page numbers and Confidential artifacts
+- [x] Export unified `extractResumeText(file: File): Promise<string>` with typed `UnsupportedFileTypeError`
 
 #### Mapper Module (`src/modules/mapper/`)
-- [ ] Create `formScanner.ts` — scan current page DOM for all visible form fields
-  - Extract: label text, input type, element selector path, available options (for dropdowns)
-  - Handle shadow DOM traversal
-  - Ignore hidden/disabled fields
-- [ ] Create `fieldDescriptor.ts` — normalize raw DOM field data into `FieldDescriptor` type
-- [ ] Create `apiMapper.ts` — send field descriptors to backend `/api/ai/map-fields`, return fill plan
-- [ ] Create `confidenceFilter.ts` — separate high-confidence fills from needs-review items
+- [x] Create `formScanner.ts` — DOM scan with data-automation-id → aria-label → label text priority; shadow DOM traversal; skips hidden/disabled
+- [x] Create `fieldDescriptor.ts` — normalize raw DOM data into `FieldDescriptor`, strip asterisks, map input types
+- [x] Create `apiMapper.ts` — POST to `/api/ai/map-fields` with Bearer auth
+- [x] Create `confidenceFilter.ts` — split at 0.6 threshold; honour `needsReview` flag
 
 #### Filler Module (`src/modules/filler/`)
-- [ ] Create `textFiller.ts` — fill text inputs with proper React event simulation
-  ```js
-  // Must fire nativeInputValueSetter, then dispatch 'input' and 'change' events
-  // Workday uses React — direct .value = x doesn't trigger React's synthetic events
-  ```
-- [ ] Create `dropdownFiller.ts` — open dropdown, wait for options to render, click matching option
-- [ ] Create `dateFiller.ts` — handle Workday date picker format (MM/DD/YYYY)
-- [ ] Create `radioFiller.ts` — find radio group by name, click correct option
-- [ ] Create `checkboxFiller.ts` — check/uncheck based on mapped boolean value
-- [ ] Create `fileFiller.ts` — programmatic file input using DataTransfer API
-- [ ] Create `repeatableSectionFiller.ts` — detect "Add Another" patterns, click to add rows, fill each
-- [ ] Create `fillOrchestrator.ts` — execute fill plan in order, skip pre-filled fields, collect errors
-- [ ] Add 150-300ms delay between fills to avoid triggering bot detection
+- [x] Create `textFiller.ts` — nativeInputValueSetter + input/change/blur events
+- [x] Create `dropdownFiller.ts` — native select + Workday combobox (click → wait → role="option")
+- [x] Create `dateFiller.ts` — YYYY-MM-DD and "Month YYYY" → MM/DD/YYYY normalisation
+- [x] Create `radioFiller.ts` — find by name/data-automation-id, match by label text
+- [x] Create `checkboxFiller.ts` — click if state differs, dispatch change
+- [x] Create `fileFiller.ts` — DataTransfer API file injection
+- [x] Create `repeatableSectionFiller.ts` — find "Add Another" by text/aria-label, click + wait
+- [x] Create `fillOrchestrator.ts` — ordered execution, 150-300ms random delay, 3-attempt retry, manual_required fallback
 
 #### Navigator Module (`src/modules/navigator/`)
-- [ ] Create `stepDetector.ts` — identify current Workday step from page DOM/URL patterns
-  - Steps: job details, login/create account, my information, experience, education, application questions, review, submit
-- [ ] Create `stepAdvancer.ts` — find and click "Next", "Save and Continue" buttons
-- [ ] Create `mutationWatcher.ts` — `MutationObserver` watching for new fields appearing after step transitions
-- [ ] Create `retryMechanism.ts` — retry failed fills up to 3 times with exponential backoff
-- [ ] Create `pageReadyChecker.ts` — wait for Workday's React app to finish rendering before acting
+- [x] Create `stepDetector.ts` — URL pattern + DOM signature detection for all 8 Workday steps
+- [x] Create `stepAdvancer.ts` — tries 5 button selectors in priority order
+- [x] Create `mutationWatcher.ts` — MutationObserver on body, 300ms debounce, cleanup function returned
+- [x] Create `retryMechanism.ts` — generic `withRetry<T>` with exponential backoff
+- [x] Create `pageReadyChecker.ts` — polls readyState + loading indicators, 10s timeout
 
 ### Background Service Worker (`src/background/`)
-- [ ] Create `serviceWorker.ts`
-- [ ] Handle messages from popup and content script
-- [ ] Manage JWT token storage in `chrome.storage.session`
-- [ ] Coordinate API calls (content scripts can't directly call external APIs in MV3 — route through background)
-- [ ] Handle extension install/update events
+- [x] Create `serviceWorker.ts` — typed discriminated union for all message types
+- [x] Handle GET/SET/CLEAR_TOKEN via `chrome.storage.session`
+- [x] Route API_REQUEST via `fetch()` with Bearer auth
+- [x] Forward STEP_CHANGED from content script
+- [x] Handle extension install event
 
 ### Popup UI (`src/popup/`)
-- [ ] Create React app entry point for popup (600×500px)
-- [ ] Build `ResumeUpload` component — drag-drop or click to upload PDF/DOCX
-- [ ] Build `ResumePreview` component — show parsed resume data, allow inline edits
-- [ ] Build `ApplicationStatus` component — current step, progress bar, field fill count
-- [ ] Build `FieldReviewPanel` component — list low-confidence mappings, allow manual override
-- [ ] Build `FinalReviewScreen` component — show ALL filled values before submission, require explicit confirm
-- [ ] Build `SettingsPanel` component — API key entry, autofill speed, auto-advance toggle
-- [ ] Build `ErrorPanel` component — show fill failures with manual fill guidance
+- [x] Tabbed layout (Resume/Status/Review/Settings) at 600×500px
+- [x] Build `ResumeUpload` — drag-drop or click, progress spinner, error display
+- [x] Build `ResumePreview` — name/email/skills pills/experience+education counts, clear button
+- [x] Build `ApplicationStatus` — step label, progress bar, fill result badges, low-confidence warning
+- [x] Build `FieldReviewPanel` — inline edits, confidence %, per-field and bulk approve
+- [x] Build `FinalReviewScreen` — full mapping table, explicit confirm gate, Go Back button
+- [x] Build `SettingsPanel` — API URL, fill delay, auto-advance, debug mode
+- [x] Build `ErrorPanel` — lists failed/manual_required fills with guidance
 
 ### Zustand Store Architecture
-- [ ] Create `src/store/resumeStore.ts`
-  - State: `file`, `rawText`, `parsedData`, `parseStatus`
-  - Actions: `uploadResume`, `parsedResume`, `clearResume`
-- [ ] Create `src/store/applicationStore.ts`
-  - State: `currentStep`, `fillPlan`, `fillResults`, `lowConfidenceFields`
-  - Actions: `startFill`, `updateFillResult`, `confirmSubmit`
-- [ ] Create `src/store/settingsStore.ts`
-  - State: `apiBaseUrl`, `fillDelay`, `autoAdvance`, `debugMode`
-  - Actions: `updateSettings`
-  - Persist to `chrome.storage.sync`
-- [ ] Create `src/store/authStore.ts`
-  - State: `token`, `user`, `isAuthenticated`
-  - Actions: `login`, `logout`
+- [x] Create `src/store/resumeStore.ts` — file, rawText, parsedData, parseStatus
+- [x] Create `src/store/applicationStore.ts` — currentStep, fillPlan, fillResults, lowConfidenceFields
+- [x] Create `src/store/settingsStore.ts` — persisted to `chrome.storage.sync`
+- [x] Create `src/store/authStore.ts` — token via background service worker
 
 ### TanStack Query Integration
-- [ ] Set up `QueryClient` with retry config (no retry on 4xx, 3 retries on 5xx)
-- [ ] Create `src/hooks/useResumeUpload.ts` — `useMutation` for resume upload + parse
-- [ ] Create `src/hooks/useFieldMapping.ts` — `useMutation` for AI field mapping
-- [ ] Create `src/hooks/useApplicationStatus.ts` — `useQuery` for polling application state
-- [ ] Configure staleTime: 5min for resume data, 0 for live field mappings
+- [x] Set up `QueryClient` — no retry on 4xx, exponential backoff on 5xx
+- [x] Create `src/hooks/useResumeUpload.ts` — useMutation → updates resumeStore
+- [x] Create `src/hooks/useFieldMapping.ts` — useMutation with auth header
+- [x] Create `src/hooks/useApplicationStatus.ts` — useQuery polling every 5s, staleTime: 0
 
 ---
 
