@@ -2,19 +2,25 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'path'
-import { copyFileSync } from 'fs'
+import { copyFileSync, mkdirSync, readdirSync } from 'fs'
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     {
-      name: 'copy-manifest',
+      name: 'copy-extension-assets',
       closeBundle() {
         copyFileSync(
           resolve(__dirname, 'manifest.json'),
           resolve(__dirname, 'dist/manifest.json')
         )
+        const iconsSrc = resolve(__dirname, 'icons')
+        const iconsDest = resolve(__dirname, 'dist/icons')
+        mkdirSync(iconsDest, { recursive: true })
+        for (const file of readdirSync(iconsSrc)) {
+          copyFileSync(resolve(iconsSrc, file), resolve(iconsDest, file))
+        }
       },
     },
   ],
