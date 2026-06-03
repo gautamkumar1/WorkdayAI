@@ -36,7 +36,8 @@ function findLabel(el: FormElement, root: Document | ShadowRoot): string {
 
   // for attribute on label
   if (el.id) {
-    const forLabel = root.querySelector<HTMLLabelElement>(`label[for="${CSS.escape(el.id)}"]`)
+    const escapedId = typeof CSS !== 'undefined' ? CSS.escape(el.id) : el.id
+    const forLabel = root.querySelector<HTMLLabelElement>(`label[for="${escapedId}"]`)
     if (forLabel) return forLabel.textContent ?? ''
   }
 
