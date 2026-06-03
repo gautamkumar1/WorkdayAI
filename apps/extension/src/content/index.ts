@@ -3,6 +3,8 @@ import { executeFillPlan } from '../modules/filler/fillOrchestrator'
 import { detectCurrentStep } from '../modules/navigator/stepDetector'
 import { waitForPageReady } from '../modules/navigator/pageReadyChecker'
 import { watchForNewFields } from '../modules/navigator/mutationWatcher'
+import { advanceToNextStep } from '../modules/navigator/stepAdvancer'
+import { waitForLoginCompletion } from '../modules/navigator/loginWatcher'
 import type { FieldMapping, FillResult } from '@workday-ai/shared'
 
 type ContentMessage =
@@ -10,6 +12,8 @@ type ContentMessage =
   | { type: 'EXECUTE_FILL'; mappings: FieldMapping[]; delayMs?: number }
   | { type: 'GET_STEP' }
   | { type: 'WAIT_READY' }
+  | { type: 'AUTO_ADVANCE' }
+  | { type: 'WAIT_FOR_LOGIN' }
 
 let cleanupMutationWatcher: (() => void) | null = null
 
@@ -50,6 +54,16 @@ async function handleContentMessage(message: ContentMessage): Promise<unknown> {
       await waitForPageReady()
       return { ready: true }
     }
+
+    case 'AUTO_ADVANCE': {
+      const { advanced, newStep } = await advanceToNextStep()
+      return { advanced, newStep }
+    }
+
+    case 'WAIT_FOR_LOGIN': {
+      await waitForLoginCompletion()
+      return { done: true }
+    }
   }
 }
 
@@ -61,6 +75,9 @@ function startMutationWatcher() {
     chrome.runtime.sendMessage({ type: 'STEP_CHANGED', step }).catch(() => {
       // Popup may not be open — ignore
     })
+    if (step === 'review') {
+      chrome.runtime.sendMessage({ type: 'REVIEW_READY' }).catch(() => {})
+    }
   })
 }
 
@@ -69,5 +86,8 @@ waitForPageReady()
     startMutationWatcher()
     const step = detectCurrentStep()
     chrome.runtime.sendMessage({ type: 'STEP_CHANGED', step }).catch(() => {})
+    if (step === 'login') {
+      chrome.runtime.sendMessage({ type: 'LOGIN_REQUIRED' }).catch(() => {})
+    }
   })
   .catch(() => {})
