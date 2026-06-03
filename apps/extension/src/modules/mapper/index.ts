@@ -1,0 +1,5 @@
+export { normalizeField } from './fieldDescriptor'
+export type { RawFieldData } from './fieldDescriptor'
+export { scanFormFields } from './formScanner'
+export { splitByConfidence } from './confidenceFilter'
+export { mapFieldsViaApi, ApiMapperError } from './apiMapper'
