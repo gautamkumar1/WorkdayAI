@@ -167,23 +167,37 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
   return null
 }
 
+// Known Workday page-section automation IDs — scan only the active one
+const PAGE_SECTION_IDS = [
+  'applyFlowMyInfoPage',
+  'applyFlowExperiencePage',
+  'applyFlowEducationPage',
+  'applyFlowQuestionnairePage',
+  'applyFlowVoluntaryPage',
+  'applyFlowReviewPage',
+]
+
 export function scanFormFields(): FieldDescriptor[] {
   const results: FieldDescriptor[] = []
 
-  // Workday renders ALL fields at once but only shows the current section.
-  // Restrict scan to within the viewport (± 100px tolerance) to avoid hidden sections.
-  const viewportHeight = window.innerHeight
-  const containers = document.querySelectorAll<Element>(WORKDAY_FIELD_CONTAINER)
+  // Try to find the active page section and scope the scan to it
+  let root: Element = document.body
+  for (const sectionId of PAGE_SECTION_IDS) {
+    const section = document.querySelector(`[data-automation-id="${sectionId}"]`)
+    if (section) {
+      root = section
+      break
+    }
+  }
+
+  const containers = root.querySelectorAll<Element>(WORKDAY_FIELD_CONTAINER)
 
   for (const container of containers) {
     const autoId = container.getAttribute('data-automation-id') ?? ''
-
-    // Skip nav/chrome containers
     if (SKIP_AUTOMATION_IDS.has(autoId)) continue
 
-    // Only include containers whose top edge is within the current viewport
+    // Skip containers with zero dimensions (truly hidden)
     const rect = container.getBoundingClientRect()
-    if (rect.top > viewportHeight + 100 || rect.bottom < -100) continue
     if (rect.width === 0 && rect.height === 0) continue
 
     const descriptor = getFieldDescriptorFromContainer(container)
