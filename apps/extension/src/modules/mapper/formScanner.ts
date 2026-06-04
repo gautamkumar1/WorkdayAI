@@ -15,19 +15,6 @@ const SKIP_AUTOMATION_IDS = new Set([
   'applyFlowPage',
 ])
 
-function isVisible(el: Element): boolean {
-  const style = window.getComputedStyle(el)
-  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-    return false
-  }
-  const rect = el.getBoundingClientRect()
-  // If all zeros, getBoundingClientRect has no layout info (jsdom/test env) — use offsetParent
-  if (rect.width === 0 && rect.height === 0 && rect.top === 0) {
-    return (el as HTMLElement).offsetParent !== null || el.parentElement !== null
-  }
-  return rect.width > 0 && rect.height > 0
-}
-
 function getLabelText(container: Element): string {
   // Workday label pattern: [data-automation-id$="Label"] or [data-automation-id$="-label"]
   const labelEl =
@@ -157,6 +144,10 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
 
 export function scanFormFields(): FieldDescriptor[] {
   const results: FieldDescriptor[] = []
+
+  // Workday renders ALL fields at once but only shows the current section.
+  // Restrict scan to within the viewport (± 100px tolerance) to avoid hidden sections.
+  const viewportHeight = window.innerHeight
   const containers = document.querySelectorAll<Element>(WORKDAY_FIELD_CONTAINER)
 
   for (const container of containers) {
@@ -165,8 +156,10 @@ export function scanFormFields(): FieldDescriptor[] {
     // Skip nav/chrome containers
     if (SKIP_AUTOMATION_IDS.has(autoId)) continue
 
-    // Only process visible containers
-    if (!isVisible(container)) continue
+    // Only include containers whose top edge is within the current viewport
+    const rect = container.getBoundingClientRect()
+    if (rect.top > viewportHeight + 100 || rect.bottom < -100) continue
+    if (rect.width === 0 && rect.height === 0) continue
 
     const descriptor = getFieldDescriptorFromContainer(container)
     if (descriptor && descriptor.label) {
