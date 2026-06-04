@@ -28,8 +28,10 @@ Rules:
 - confidence >= 0.8: high-confidence direct match (e.g. "First Name" → firstName)
 - confidence 0.6–0.8: inferred match (e.g. "Given Name" → firstName)
 - confidence < 0.6: uncertain, not enough context
-- For dropdown fields, value MUST be one of the provided options exactly
+- For dropdown fields WITH options: value MUST be one of the provided options exactly
+- For dropdown fields WITHOUT options (empty array): use the best value from resume data directly
 - For missing data, return value="" with confidence=0.0
+- "Country" field with no options → use country name from resume location (e.g. "India", "United States")
 - Wrap the array in {{"mappings": [...]}}
 - Return ONLY the JSON object, no explanation text
 

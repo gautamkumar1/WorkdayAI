@@ -16,18 +16,43 @@ const SKIP_AUTOMATION_IDS = new Set([
 ])
 
 function getLabelText(container: Element): string {
-  // Workday label pattern: [data-automation-id$="Label"] or [data-automation-id$="-label"]
+  // Strategy 1: direct child label element
+  for (const child of Array.from(container.children)) {
+    if (child.tagName === 'LABEL') {
+      return child.textContent?.replace(/\*/g, '').trim() ?? ''
+    }
+  }
+
+  // Strategy 2: [data-automation-id$="Label"] — but only take its own text, not descendants
   const labelEl =
     container.querySelector<Element>('[data-automation-id$="Label"]') ??
-    container.querySelector<Element>('label') ??
     container.querySelector<Element>('[data-automation-id="formLabel"]')
 
   if (labelEl) {
+    // Get only direct text nodes to avoid picking up nested element text
+    const directText = Array.from(labelEl.childNodes)
+      .filter((n) => n.nodeType === Node.TEXT_NODE)
+      .map((n) => n.textContent ?? '')
+      .join('')
+      .replace(/\*/g, '')
+      .trim()
+    if (directText) return directText
+    // Fall back to full text if no direct text nodes
     return labelEl.textContent?.replace(/\*/g, '').trim() ?? ''
   }
 
-  // Fallback: derive from automation ID itself
-  // "formField-source" → "source", "formField-legalName--firstName" → "firstName"
+  // Strategy 3: first <p> or <span> child that looks like a label (short text, no inputs inside)
+  for (const child of Array.from(container.children)) {
+    if (
+      ['P', 'SPAN', 'DIV'].includes(child.tagName) &&
+      !child.querySelector('input,select,textarea')
+    ) {
+      const text = child.textContent?.replace(/\*/g, '').trim() ?? ''
+      if (text.length > 0 && text.length < 100) return text
+    }
+  }
+
+  // Strategy 4: derive from automation ID
   const autoId = container.getAttribute('data-automation-id') ?? ''
   const key = autoId.replace('formField-', '').replace(/.*--/, '')
   return key
