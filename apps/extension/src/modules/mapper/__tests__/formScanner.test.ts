@@ -2,13 +2,12 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { scanFormFields } from '../formScanner'
 
-// Workday wraps every field in div[data-automation-id="formField-*"]
 function makeWorkdayField(automationId: string, labelText: string, inputHtml: string): string {
-  return `
-    <div data-automation-id="${automationId}">
-      <label data-automation-id="${automationId}Label">${labelText}</label>
-      ${inputHtml}
-    </div>`
+  return `<div data-automation-id="${automationId}"><label>${labelText}</label>${inputHtml}</div>`
+}
+
+function inSection(fields: string): string {
+  return `<div data-automation-id="applyFlowMyInfoPage">${fields}</div>`
 }
 
 beforeEach(() => {
@@ -17,10 +16,8 @@ beforeEach(() => {
 
 describe('scanFormFields — Workday formField containers', () => {
   it('finds text input inside formField container', () => {
-    document.body.innerHTML = makeWorkdayField(
-      'formField-legalName--firstName',
-      'First Name',
-      '<input type="text" />',
+    document.body.innerHTML = inSection(
+      makeWorkdayField('formField-legalName--firstName', 'First Name', '<input type="text" />'),
     )
     const fields = scanFormFields()
     expect(fields.length).toBeGreaterThan(0)
@@ -29,10 +26,12 @@ describe('scanFormFields — Workday formField containers', () => {
   })
 
   it('finds select with options', () => {
-    document.body.innerHTML = makeWorkdayField(
-      'formField-country',
-      'Country',
-      '<select><option>India</option><option>United States</option></select>',
+    document.body.innerHTML = inSection(
+      makeWorkdayField(
+        'formField-country',
+        'Country',
+        '<select><option>India</option><option>United States</option></select>',
+      ),
     )
     const fields = scanFormFields()
     expect(fields.length).toBeGreaterThan(0)
@@ -42,11 +41,13 @@ describe('scanFormFields — Workday formField containers', () => {
   })
 
   it('finds radio group', () => {
-    document.body.innerHTML = makeWorkdayField(
-      'formField-candidateIsPreviousWorker',
-      'Have you previously worked here?',
-      `<input type="radio" name="candidateIsPreviousWorker"><label>Yes</label>
-       <input type="radio" name="candidateIsPreviousWorker"><label>No</label>`,
+    document.body.innerHTML = inSection(
+      makeWorkdayField(
+        'formField-candidateIsPreviousWorker',
+        'Have you previously worked here?',
+        `<input type="radio" name="candidateIsPreviousWorker"><label>Yes</label>
+         <input type="radio" name="candidateIsPreviousWorker"><label>No</label>`,
+      ),
     )
     const fields = scanFormFields()
     expect(fields.length).toBeGreaterThan(0)
@@ -55,10 +56,12 @@ describe('scanFormFields — Workday formField containers', () => {
   })
 
   it('finds Workday multiselect container', () => {
-    document.body.innerHTML = makeWorkdayField(
-      'formField-source',
-      'How Did You Hear About Us?',
-      '<div data-automation-id="multiSelectContainer"><div data-automation-id="multiselectInputContainer"></div></div>',
+    document.body.innerHTML = inSection(
+      makeWorkdayField(
+        'formField-source',
+        'How Did You Hear About Us?',
+        '<div data-automation-id="multiSelectContainer"><div data-automation-id="multiselectInputContainer"></div></div>',
+      ),
     )
     const fields = scanFormFields()
     expect(fields.length).toBeGreaterThan(0)
@@ -67,10 +70,8 @@ describe('scanFormFields — Workday formField containers', () => {
   })
 
   it('finds textarea', () => {
-    document.body.innerHTML = makeWorkdayField(
-      'formField-coverLetter',
-      'Cover Letter',
-      '<textarea></textarea>',
+    document.body.innerHTML = inSection(
+      makeWorkdayField('formField-coverLetter', 'Cover Letter', '<textarea></textarea>'),
     )
     const fields = scanFormFields()
     expect(fields.length).toBeGreaterThan(0)
@@ -79,7 +80,7 @@ describe('scanFormFields — Workday formField containers', () => {
 })
 
 describe('scanFormFields — skipped elements', () => {
-  it('skips navigation chrome containers (header automation id)', () => {
+  it('skips navigation chrome containers', () => {
     document.body.innerHTML = `
       <div data-automation-id="header">
         <div data-automation-id="navigationContainer">Nav</div>
@@ -88,20 +89,21 @@ describe('scanFormFields — skipped elements', () => {
     expect(fields).toHaveLength(0)
   })
 
-  it('skips invisible containers (zero dimensions)', () => {
-    document.body.innerHTML = `
+  it('skips display:none containers', () => {
+    document.body.innerHTML = inSection(`
       <div data-automation-id="formField-hidden" style="display:none">
         <label>Hidden</label><input type="text"/>
-      </div>`
+      </div>`)
     const fields = scanFormFields()
     expect(fields).toHaveLength(0)
   })
 
   it('returns all visible form containers', () => {
-    document.body.innerHTML =
+    document.body.innerHTML = inSection(
       makeWorkdayField('formField-legalName--firstName', 'First Name', '<input type="text"/>') +
-      makeWorkdayField('formField-legalName--lastName', 'Last Name', '<input type="text"/>') +
-      makeWorkdayField('formField-country', 'Country', '<select><option>India</option></select>')
+        makeWorkdayField('formField-legalName--lastName', 'Last Name', '<input type="text"/>') +
+        makeWorkdayField('formField-country', 'Country', '<select><option>India</option></select>'),
+    )
     const fields = scanFormFields()
     expect(fields.length).toBe(3)
   })
