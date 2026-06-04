@@ -35,7 +35,12 @@ function isInsideSkipContainer(el: Element): boolean {
 
 function isVisible(el: Element): boolean {
   const style = window.getComputedStyle(el)
-  return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0'
+  if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+    return false
+  }
+  // Must have actual dimensions on screen
+  const rect = el.getBoundingClientRect()
+  return rect.width > 0 && rect.height > 0
 }
 
 function isSkipped(el: FormElement): boolean {
