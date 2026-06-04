@@ -93,14 +93,22 @@ export default function AutofillPanel() {
         },
         { headers: { 'Content-Type': 'application/json', ...authHeaders } },
       )
+      // Attach automationId from scanned fields back onto AI mappings (matched by label)
+      const labelToAutomationId = new Map(
+        fields.map((f) => [f.label.toLowerCase(), f.automationId]),
+      )
       const { mappings } = mapRes.data.data
-      const { autoFill, needsReview } = splitByConfidence(mappings)
+      const mappingsWithId = mappings.map((m) => ({
+        ...m,
+        automationId: labelToAutomationId.get(m.fieldLabel.toLowerCase()) ?? null,
+      }))
+      const { autoFill, needsReview } = splitByConfidence(mappingsWithId)
 
       // Record in store so Review tab shows low-confidence fields
       const appId = crypto.randomUUID()
       startFill(appId, window.location.href ?? '', {
         applicationId: appId,
-        fields: mappings,
+        fields: mappingsWithId,
         lowConfidenceCount: needsReview.length,
       })
 

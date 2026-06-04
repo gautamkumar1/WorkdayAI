@@ -15,16 +15,22 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function findElement(fieldLabel: string): HTMLElement | null {
+function findElement(mapping: FieldMapping): HTMLElement | null {
+  // 1. Use automationId from scanner if available (most precise)
+  if (mapping.automationId) {
+    const byId = findFieldByAutomationId(mapping.automationId) as HTMLElement | null
+    if (byId) return byId
+  }
+  // 2. Fall back to label-based lookup
   return (
-    (findFieldByAutomationId(fieldLabel) as HTMLElement | null) ??
-    (findFieldByAriaLabel(fieldLabel) as HTMLElement | null) ??
-    (findFieldByLabel(fieldLabel) as HTMLElement | null)
+    (findFieldByAutomationId(mapping.fieldLabel) as HTMLElement | null) ??
+    (findFieldByAriaLabel(mapping.fieldLabel) as HTMLElement | null) ??
+    (findFieldByLabel(mapping.fieldLabel) as HTMLElement | null)
   )
 }
 
 async function executeOnce(mapping: FieldMapping): Promise<void> {
-  const el = findElement(mapping.fieldLabel)
+  const el = findElement(mapping)
   if (!el) throw new Error(`Element not found for field: ${mapping.fieldLabel}`)
 
   highlightField(el, 'pending')
@@ -42,7 +48,8 @@ async function executeOnce(mapping: FieldMapping): Promise<void> {
         await fillDateField(el as HTMLInputElement, mapping.value)
         break
       case 'radio':
-        await fillRadio(mapping.fieldLabel, mapping.value)
+        // Use automationId (radio name attr) if available, else fall back to label
+        await fillRadio(mapping.automationId ?? mapping.fieldLabel, mapping.value)
         break
       case 'checkbox':
         await fillCheckbox(el as HTMLInputElement, mapping.value === 'true')

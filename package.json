@@ -30,7 +30,7 @@
       "pnpm --filter extension exec eslint --fix"
     ],
     "packages/**/*.ts": [
-      "pnpm --filter @workday-ai/shared exec prettier --write"
+      "pnpm --filter backend exec prettier --write"
     ]
   }
 }

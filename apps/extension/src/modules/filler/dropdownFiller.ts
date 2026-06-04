@@ -34,8 +34,14 @@ export async function fillDropdown(element: HTMLElement, value: string): Promise
     return false
   }
 
-  // Workday custom combobox — click to open, wait for options to render
-  element.click()
+  // Workday custom combobox — find the clickable trigger inside the container
+  const trigger = (element.querySelector<HTMLElement>(
+    '[data-automation-id="multiselectInputContainer"]',
+  ) ??
+    element.querySelector<HTMLElement>('[role="combobox"]') ??
+    element.querySelector<HTMLElement>('input') ??
+    element) as HTMLElement
+  trigger.click()
   await wait(300)
 
   const lower = value.toLowerCase()

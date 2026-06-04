@@ -2,100 +2,107 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { scanFormFields } from '../formScanner'
 
+// Workday wraps every field in div[data-automation-id="formField-*"]
+function makeWorkdayField(automationId: string, labelText: string, inputHtml: string): string {
+  return `
+    <div data-automation-id="${automationId}">
+      <label data-automation-id="${automationId}Label">${labelText}</label>
+      ${inputHtml}
+    </div>`
+}
+
 beforeEach(() => {
   document.body.innerHTML = ''
 })
 
-describe('scanFormFields — basic field detection', () => {
-  it('finds visible text input', () => {
-    document.body.innerHTML = '<input type="text" aria-label="First Name" />'
+describe('scanFormFields — Workday formField containers', () => {
+  it('finds text input inside formField container', () => {
+    document.body.innerHTML = makeWorkdayField(
+      'formField-legalName--firstName',
+      'First Name',
+      '<input type="text" />',
+    )
     const fields = scanFormFields()
-    expect(fields.some((f) => f.label === 'First Name')).toBe(true)
+    expect(fields.length).toBeGreaterThan(0)
+    expect(fields[0]!.label).toBe('First Name')
+    expect(fields[0]!.type).toBe('text')
   })
 
   it('finds select with options', () => {
-    document.body.innerHTML = `
-      <select aria-label="Country">
-        <option>United States</option>
-        <option>Canada</option>
-      </select>`
+    document.body.innerHTML = makeWorkdayField(
+      'formField-country',
+      'Country',
+      '<select><option>India</option><option>United States</option></select>',
+    )
     const fields = scanFormFields()
-    const field = fields.find((f) => f.label === 'Country')
-    expect(field).toBeDefined()
-    expect(field?.options).toContain('United States')
-    expect(field?.options).toContain('Canada')
+    expect(fields.length).toBeGreaterThan(0)
+    expect(fields[0]!.label).toBe('Country')
+    expect(fields[0]!.type).toBe('dropdown')
+    expect(fields[0]!.options).toContain('India')
+  })
+
+  it('finds radio group', () => {
+    document.body.innerHTML = makeWorkdayField(
+      'formField-candidateIsPreviousWorker',
+      'Have you previously worked here?',
+      `<input type="radio" name="candidateIsPreviousWorker"><label>Yes</label>
+       <input type="radio" name="candidateIsPreviousWorker"><label>No</label>`,
+    )
+    const fields = scanFormFields()
+    expect(fields.length).toBeGreaterThan(0)
+    expect(fields[0]!.type).toBe('radio')
+    expect(fields[0]!.automationId).toBe('candidateIsPreviousWorker')
+  })
+
+  it('finds Workday multiselect container', () => {
+    document.body.innerHTML = makeWorkdayField(
+      'formField-source',
+      'How Did You Hear About Us?',
+      '<div data-automation-id="multiSelectContainer"><div data-automation-id="multiselectInputContainer"></div></div>',
+    )
+    const fields = scanFormFields()
+    expect(fields.length).toBeGreaterThan(0)
+    expect(fields[0]!.type).toBe('dropdown')
+    expect(fields[0]!.automationId).toBe('formField-source')
   })
 
   it('finds textarea', () => {
-    document.body.innerHTML = '<textarea aria-label="Cover Letter"></textarea>'
-    const fields = scanFormFields()
-    expect(fields.some((f) => f.label === 'Cover Letter')).toBe(true)
-  })
-
-  it('finds field via label[for] association', () => {
-    document.body.innerHTML = `
-      <label for="email-input">Email Address</label>
-      <input id="email-input" type="email" />`
-    const fields = scanFormFields()
-    expect(fields.some((f) => f.label === 'Email Address')).toBe(true)
-  })
-
-  it('finds field via aria-labelledby', () => {
-    document.body.innerHTML = `
-      <div id="lbl-phone">Phone Number</div>
-      <input type="tel" aria-labelledby="lbl-phone" />`
-    const fields = scanFormFields()
-    expect(fields.some((f) => f.label === 'Phone Number')).toBe(true)
-  })
-
-  it('finds Workday-style data-automation-id field', () => {
-    document.body.innerHTML = '<input data-automation-id="firstName" aria-label="First Name" />'
+    document.body.innerHTML = makeWorkdayField(
+      'formField-coverLetter',
+      'Cover Letter',
+      '<textarea></textarea>',
+    )
     const fields = scanFormFields()
     expect(fields.length).toBeGreaterThan(0)
+    expect(fields[0]!.type).toBe('textarea')
   })
 })
 
 describe('scanFormFields — skipped elements', () => {
-  it('skips disabled fields', () => {
-    document.body.innerHTML = '<input type="text" aria-label="Disabled Field" disabled />'
-    const fields = scanFormFields()
-    expect(fields.find((f) => f.label === 'Disabled Field')).toBeUndefined()
-  })
-
-  it('skips hidden input type', () => {
-    document.body.innerHTML = '<input type="hidden" name="csrf_token" value="abc" />'
-    const fields = scanFormFields()
-    expect(fields.find((f) => (f as Record<string, unknown>).name === 'csrf_token')).toBeUndefined()
-  })
-
-  it('skips already-filled fields (data-wai-filled)', () => {
-    document.body.innerHTML = '<input type="text" aria-label="Name" data-wai-filled="true" />'
-    const fields = scanFormFields()
-    expect(fields.find((f) => f.label === 'Name')).toBeUndefined()
-  })
-
-  it('does not duplicate the same element', () => {
+  it('skips navigation chrome containers (header automation id)', () => {
     document.body.innerHTML = `
-      <input data-automation-id="email" aria-label="Email" type="email" />`
+      <div data-automation-id="header">
+        <div data-automation-id="navigationContainer">Nav</div>
+      </div>`
     const fields = scanFormFields()
-    const emailFields = fields.filter((f) => f.label === 'Email')
-    expect(emailFields.length).toBe(1)
+    expect(fields).toHaveLength(0)
   })
-})
 
-describe('scanFormFields — multiple fields', () => {
-  it('returns all visible form fields in a typical form', () => {
+  it('skips invisible containers (zero dimensions)', () => {
     document.body.innerHTML = `
-      <form>
-        <label for="fn">First Name</label><input id="fn" type="text" />
-        <label for="ln">Last Name</label><input id="ln" type="text" />
-        <label for="em">Email</label><input id="em" type="email" />
-        <label for="ph">Phone</label><input id="ph" type="tel" />
-        <select aria-label="Country">
-          <option>US</option>
-        </select>
-      </form>`
+      <div data-automation-id="formField-hidden" style="display:none">
+        <label>Hidden</label><input type="text"/>
+      </div>`
     const fields = scanFormFields()
-    expect(fields.length).toBeGreaterThanOrEqual(5)
+    expect(fields).toHaveLength(0)
+  })
+
+  it('returns all visible form containers', () => {
+    document.body.innerHTML =
+      makeWorkdayField('formField-legalName--firstName', 'First Name', '<input type="text"/>') +
+      makeWorkdayField('formField-legalName--lastName', 'Last Name', '<input type="text"/>') +
+      makeWorkdayField('formField-country', 'Country', '<select><option>India</option></select>')
+    const fields = scanFormFields()
+    expect(fields.length).toBe(3)
   })
 })

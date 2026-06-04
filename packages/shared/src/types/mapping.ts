@@ -21,6 +21,7 @@ export interface FieldMapping {
   reasoning: string
   source: MappingSource
   needsReview: boolean
+  automationId?: string | null // Workday formField-* id or radio name, used by filler to locate element
 }
 
 export interface FillPlan {

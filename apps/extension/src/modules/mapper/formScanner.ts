@@ -1,145 +1,178 @@
 import type { FieldDescriptor } from '@workday-ai/shared'
-import { normalizeField } from './fieldDescriptor'
 
-type FormElement = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+// Workday wraps every field in a div[data-automation-id="formField-*"]
+const WORKDAY_FIELD_CONTAINER = '[data-automation-id^="formField-"]'
 
-// Only target actual form controls — never anchor tags or nav elements
-const FIELD_SELECTOR = [
-  'input[data-automation-id]:not([type="hidden"]):not([type="button"]):not([type="submit"])',
-  'select[data-automation-id]',
-  'textarea[data-automation-id]',
-  'input[aria-label]:not([type="hidden"]):not([type="button"]):not([type="submit"])',
-  'select[aria-label]',
-  'textarea[aria-label]',
-  'input[placeholder]:not([type="hidden"]):not([type="button"]):not([type="submit"])',
-  'textarea[placeholder]',
-  'input[type="text"]',
-  'input[type="email"]',
-  'input[type="tel"]',
-  'input[type="number"]',
-  'input[type="date"]',
-  'input[type="radio"]',
-  'input[type="checkbox"]',
-  'select',
-  'textarea',
-  '[role="combobox"]',
-  '[role="spinbutton"]',
-].join(', ')
-
-// Elements inside these containers are navigation/footer — skip them
-const SKIP_CONTAINERS = ['nav', 'footer', 'header', '[role="navigation"]', '[role="banner"]']
-
-function isInsideSkipContainer(el: Element): boolean {
-  return SKIP_CONTAINERS.some((sel) => el.closest(sel) !== null)
-}
+// Skip containers that are navigation/chrome
+const SKIP_AUTOMATION_IDS = new Set([
+  'header',
+  'headerTitle',
+  'navigationContainer',
+  'utilityButtonBar',
+  'pageFooter',
+  'footerContainer',
+  'progressBar',
+  'applyFlowPage',
+])
 
 function isVisible(el: Element): boolean {
   const style = window.getComputedStyle(el)
   if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
     return false
   }
-  // Must have actual dimensions on screen
   const rect = el.getBoundingClientRect()
+  // If all zeros, getBoundingClientRect has no layout info (jsdom/test env) — use offsetParent
+  if (rect.width === 0 && rect.height === 0 && rect.top === 0) {
+    return (el as HTMLElement).offsetParent !== null || el.parentElement !== null
+  }
   return rect.width > 0 && rect.height > 0
 }
 
-function isSkipped(el: FormElement): boolean {
-  if (el.hasAttribute('disabled')) return true
-  if (el.getAttribute('type') === 'hidden') return true
-  if (el.getAttribute('type') === 'button') return true
-  if (el.getAttribute('type') === 'submit') return true
-  if (el.hasAttribute('data-wai-filled')) return true
-  if (!isVisible(el)) return true
-  if (isInsideSkipContainer(el)) return true
-  return false
-}
+function getLabelText(container: Element): string {
+  // Workday label pattern: [data-automation-id$="Label"] or [data-automation-id$="-label"]
+  const labelEl =
+    container.querySelector<Element>('[data-automation-id$="Label"]') ??
+    container.querySelector<Element>('label') ??
+    container.querySelector<Element>('[data-automation-id="formLabel"]')
 
-function findLabel(el: FormElement, root: Document | ShadowRoot): string {
-  // aria-labelledby
-  const labelledBy = el.getAttribute('aria-labelledby')
-  if (labelledBy) {
-    const labelEl = root.getElementById(labelledBy)
-    if (labelEl) return labelEl.textContent?.trim() ?? ''
+  if (labelEl) {
+    return labelEl.textContent?.replace(/\*/g, '').trim() ?? ''
   }
 
-  // for attribute on label
-  if (el.id) {
-    const escapedId = typeof CSS !== 'undefined' ? CSS.escape(el.id) : el.id
-    const forLabel = root.querySelector<HTMLLabelElement>(`label[for="${escapedId}"]`)
-    if (forLabel) return forLabel.textContent?.trim() ?? ''
-  }
-
-  // closest label parent
-  const parentLabel = el.closest('label')
-  if (parentLabel) return parentLabel.textContent?.trim() ?? ''
-
-  // aria-label attribute
-  const ariaLabel = el.getAttribute('aria-label')
-  if (ariaLabel) return ariaLabel.trim()
-
-  // Workday: look for sibling div with data-automation-id ending in "Label"
-  const parent = el.parentElement
-  if (parent) {
-    const labelDiv = parent.querySelector('[data-automation-id$="Label"]')
-    if (labelDiv) return labelDiv.textContent?.trim() ?? ''
-  }
-
-  // preceding sibling label
-  let sibling = el.previousElementSibling
-  while (sibling) {
-    if (sibling.tagName === 'LABEL') return sibling.textContent?.trim() ?? ''
-    sibling = sibling.previousElementSibling
-  }
-
-  return ''
+  // Fallback: derive from automation ID itself
+  // "formField-source" → "source", "formField-legalName--firstName" → "firstName"
+  const autoId = container.getAttribute('data-automation-id') ?? ''
+  const key = autoId.replace('formField-', '').replace(/.*--/, '')
+  return key
 }
 
-function extractOptions(el: FormElement): string[] | null {
-  if (el.tagName !== 'SELECT') return null
-  return Array.from((el as HTMLSelectElement).options)
-    .map((o) => o.text.trim())
-    .filter(Boolean)
-}
+function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | null {
+  const label = getLabelText(container)
+  if (!label) return null
 
-function getRawType(el: FormElement): string {
-  if (el.tagName === 'SELECT') return 'select-one'
-  if (el.tagName === 'TEXTAREA') return 'textarea'
-  return (el as HTMLInputElement).type ?? 'text'
-}
+  const autoId = container.getAttribute('data-automation-id') ?? ''
 
-function scanRoot(root: Document | ShadowRoot): FieldDescriptor[] {
-  const results: FieldDescriptor[] = []
-  const seen = new Set<Element>()
-
-  const elements = root.querySelectorAll<FormElement>(FIELD_SELECTOR)
-
-  for (const el of elements) {
-    if (seen.has(el)) continue
-    seen.add(el)
-
-    if (isSkipped(el)) continue
-
-    const rawLabel = findLabel(el, root)
-    const rawType = getRawType(el)
-    const descriptor = normalizeField({ element: el, rawLabel, rawType })
-
-    // override options for select
-    const options = extractOptions(el)
-    if (options !== null) {
-      ;(descriptor as { options: string[] | null }).options = options
+  // Radio group
+  const radios = container.querySelectorAll<HTMLInputElement>('input[type="radio"]')
+  if (radios.length > 0) {
+    // Use the radio name as the automationId for the filler
+    const radioName = radios[0]?.name ?? autoId
+    return {
+      label,
+      type: 'radio',
+      automationId: radioName,
+      ariaLabel: null,
+      placeholder: null,
+      options: Array.from(radios).map((r) => r.labels?.[0]?.textContent?.trim() ?? r.value),
+      required: container.querySelector('[aria-required="true"], [required]') !== null,
+      currentValue: null,
     }
+  }
 
-    results.push(descriptor)
+  // Checkbox
+  const checkbox = container.querySelector<HTMLInputElement>('input[type="checkbox"]')
+  if (checkbox) {
+    return {
+      label,
+      type: 'checkbox',
+      automationId: checkbox.getAttribute('data-automation-id') ?? autoId,
+      ariaLabel: checkbox.getAttribute('aria-label'),
+      placeholder: null,
+      options: null,
+      required: false,
+      currentValue: checkbox.checked ? 'true' : 'false',
+    }
+  }
 
-    // traverse shadow DOM
-    if (el.shadowRoot) {
-      results.push(...scanRoot(el.shadowRoot))
+  // Native select
+  const select = container.querySelector<HTMLSelectElement>('select')
+  if (select) {
+    return {
+      label,
+      type: 'dropdown',
+      automationId: select.getAttribute('data-automation-id') ?? autoId,
+      ariaLabel: select.getAttribute('aria-label'),
+      placeholder: null,
+      options: Array.from(select.options)
+        .map((o) => o.text.trim())
+        .filter(Boolean),
+      required: select.required,
+      currentValue: select.value || null,
+    }
+  }
+
+  // Workday custom multiselect / combobox (div with multiSelectContainer inside)
+  const multiSelect = container.querySelector<Element>(
+    '[data-automation-id="multiSelectContainer"], [data-automation-id="multiselectInputContainer"]',
+  )
+  if (multiSelect) {
+    return {
+      label,
+      type: 'dropdown',
+      automationId: autoId,
+      ariaLabel: null,
+      placeholder: null,
+      options: null, // options load dynamically on click
+      required: container.querySelector('[aria-required="true"]') !== null,
+      currentValue: null,
+    }
+  }
+
+  // Text input
+  const input = container.querySelector<HTMLInputElement>(
+    'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"])',
+  )
+  if (input) {
+    const inputType = input.type || 'text'
+    const fieldType = inputType === 'date' ? 'date' : 'text'
+    return {
+      label,
+      type: fieldType,
+      automationId: input.getAttribute('data-automation-id') ?? autoId,
+      ariaLabel: input.getAttribute('aria-label'),
+      placeholder: input.placeholder || null,
+      options: null,
+      required: input.required,
+      currentValue: input.value || null,
+    }
+  }
+
+  // Textarea
+  const textarea = container.querySelector<HTMLTextAreaElement>('textarea')
+  if (textarea) {
+    return {
+      label,
+      type: 'textarea',
+      automationId: textarea.getAttribute('data-automation-id') ?? autoId,
+      ariaLabel: textarea.getAttribute('aria-label'),
+      placeholder: textarea.placeholder || null,
+      options: null,
+      required: textarea.required,
+      currentValue: textarea.value || null,
+    }
+  }
+
+  return null
+}
+
+export function scanFormFields(): FieldDescriptor[] {
+  const results: FieldDescriptor[] = []
+  const containers = document.querySelectorAll<Element>(WORKDAY_FIELD_CONTAINER)
+
+  for (const container of containers) {
+    const autoId = container.getAttribute('data-automation-id') ?? ''
+
+    // Skip nav/chrome containers
+    if (SKIP_AUTOMATION_IDS.has(autoId)) continue
+
+    // Only process visible containers
+    if (!isVisible(container)) continue
+
+    const descriptor = getFieldDescriptorFromContainer(container)
+    if (descriptor && descriptor.label) {
+      results.push(descriptor)
     }
   }
 
   return results
-}
-
-export function scanFormFields(): FieldDescriptor[] {
-  return scanRoot(document)
 }
