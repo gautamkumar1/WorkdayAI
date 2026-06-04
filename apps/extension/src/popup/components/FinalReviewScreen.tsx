@@ -13,14 +13,17 @@ interface Props {
 
 export default function FinalReviewScreen({ onBack }: Props) {
   const { fillPlan, currentStep, confirmSubmit } = useApplicationStore()
+  const isSubmitStep = currentStep === 'review'
 
-  if (!fillPlan || currentStep !== 'review') return null
+  if (!fillPlan) return null
 
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2">
         <p className="text-xs text-amber-800 font-medium">
-          ⚠ This will submit your application. Review carefully before confirming.
+          {isSubmitStep
+            ? '⚠ This will submit your application. Review carefully before confirming.'
+            : 'Review all mapped fields below. Go to the Status tab to continue filling.'}
         </p>
       </div>
 

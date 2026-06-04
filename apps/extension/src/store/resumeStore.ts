@@ -13,6 +13,7 @@ interface ResumeState {
   setParsed: (rawText: string, parsedData: ResumeData) => void
   setParseError: (error: string) => void
   clearResume: () => void
+  rehydrate: () => Promise<void>
 }
 
 export const useResumeStore = create<ResumeState>((set) => ({
@@ -24,17 +25,26 @@ export const useResumeStore = create<ResumeState>((set) => ({
 
   setFile: (file) => set({ file, parseStatus: 'parsing', parseError: null }),
 
-  setParsed: (rawText, parsedData) =>
-    set({ rawText, parsedData, parseStatus: 'done', parseError: null }),
+  setParsed: (rawText, parsedData) => {
+    chrome.storage.local
+      .set({ resumeRawText: rawText, resumeParsedData: parsedData })
+      .catch(console.error)
+    set({ rawText, parsedData, parseStatus: 'done', parseError: null })
+  },
 
   setParseError: (error) => set({ parseStatus: 'error', parseError: error }),
 
-  clearResume: () =>
-    set({
-      file: null,
-      rawText: null,
-      parsedData: null,
-      parseStatus: 'idle',
-      parseError: null,
-    }),
+  clearResume: () => {
+    chrome.storage.local.remove(['resumeRawText', 'resumeParsedData']).catch(console.error)
+    set({ file: null, rawText: null, parsedData: null, parseStatus: 'idle', parseError: null })
+  },
+
+  rehydrate: async () => {
+    const result = await chrome.storage.local.get(['resumeRawText', 'resumeParsedData'])
+    const rawText = result['resumeRawText'] as string | undefined
+    const parsedData = result['resumeParsedData'] as ResumeData | undefined
+    if (rawText && parsedData) {
+      set({ rawText, parsedData, parseStatus: 'done', parseError: null })
+    }
+  },
 }))

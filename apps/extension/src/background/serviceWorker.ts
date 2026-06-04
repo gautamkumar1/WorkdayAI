@@ -36,17 +36,17 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, _sender, sendRe
 async function handleMessage(message: ExtensionMessage): Promise<unknown> {
   switch (message.type) {
     case 'GET_TOKEN': {
-      const result = await chrome.storage.session.get(['token'])
+      const result = await chrome.storage.local.get(['token'])
       return { token: (result['token'] as string | undefined) ?? null }
     }
 
     case 'SET_TOKEN': {
-      await chrome.storage.session.set({ token: message.token })
+      await chrome.storage.local.set({ token: message.token })
       return { success: true }
     }
 
     case 'CLEAR_TOKEN': {
-      await chrome.storage.session.remove(['token'])
+      await chrome.storage.local.remove(['token'])
       return { success: true }
     }
 

@@ -11,6 +11,7 @@ interface AuthState {
   isAuthenticated: boolean
   login: (token: string, user: AuthUser) => void
   logout: () => void
+  rehydrate: () => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -19,12 +20,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
 
   login: (token, user) => {
-    chrome.runtime.sendMessage({ type: 'SET_TOKEN', token }).catch(console.error)
+    chrome.storage.local.set({ token, authUser: user }).catch(console.error)
     set({ token, user, isAuthenticated: true })
   },
 
   logout: () => {
-    chrome.runtime.sendMessage({ type: 'CLEAR_TOKEN' }).catch(console.error)
+    chrome.storage.local.remove(['token', 'authUser']).catch(console.error)
     set({ token: null, user: null, isAuthenticated: false })
+  },
+
+  rehydrate: async () => {
+    const result = await chrome.storage.local.get(['token', 'authUser'])
+    const token = result['token'] as string | undefined
+    const user = result['authUser'] as AuthUser | undefined
+    if (token && user) {
+      set({ token, user, isAuthenticated: true })
+    }
   },
 }))

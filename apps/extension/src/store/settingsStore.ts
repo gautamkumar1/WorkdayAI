@@ -9,7 +9,7 @@ interface SettingsState {
 }
 
 const DEFAULTS: Omit<SettingsState, 'updateSettings'> = {
-  apiBaseUrl: 'http://localhost:3000',
+  apiBaseUrl: 'http://localhost:3001',
   fillDelay: 200,
   autoAdvance: true,
   debugMode: false,

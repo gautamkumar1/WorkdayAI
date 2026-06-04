@@ -24,6 +24,9 @@ export function detectCurrentStep(): WorkdayStep {
     url.includes('/login') ||
     hasAutomationId('signInSubmitButton') ||
     hasAutomationId('createAccount') ||
+    hasAutomationId('utilityButtonSignIn') ||
+    url.includes('/applyManually') ||
+    url.includes('/autofillWithResume') ||
     headingContains('Sign In') ||
     headingContains('Create Account')
   ) {

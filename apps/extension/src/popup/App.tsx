@@ -24,7 +24,7 @@ const TABS: { id: Tab; label: string }[] = [
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('status')
   const { parsedData } = useResumeStore()
-  const { lowConfidenceFields, fillPlan, currentStep } = useApplicationStore()
+  const { lowConfidenceFields, fillPlan } = useApplicationStore()
   const { isAuthenticated, logout } = useAuthStore()
 
   if (!isAuthenticated) {
@@ -61,13 +61,13 @@ export default function App() {
         if (lowConfidenceFields.length > 0) {
           return <FieldReviewPanel />
         }
-        if (fillPlan && currentStep === 'review') {
+        if (fillPlan) {
           return <FinalReviewScreen onBack={() => setActiveTab('status')} />
         }
         return (
           <div className="p-4">
             <p className="text-sm text-gray-500">
-              No active application. Open a Workday job posting to begin.
+              Run autofill first — mapped fields will appear here for review.
             </p>
           </div>
         )
