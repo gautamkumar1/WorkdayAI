@@ -22,10 +22,10 @@ describe('authStore', () => {
     expect(state.user?.email).toBe('a@b.com')
   })
 
-  it('login sends SET_TOKEN message to background', () => {
-    const spy = vi.spyOn(chrome.runtime, 'sendMessage').mockResolvedValue(undefined)
+  it('login persists token to chrome.storage.local', () => {
+    const spy = vi.spyOn(chrome.storage.local, 'set').mockResolvedValue(undefined)
     useAuthStore.getState().login('tok-xyz', { id: 'u2', email: 'x@y.com' })
-    expect(spy).toHaveBeenCalledWith({ type: 'SET_TOKEN', token: 'tok-xyz' })
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ token: 'tok-xyz' }))
   })
 
   it('logout clears state', () => {
@@ -37,9 +37,9 @@ describe('authStore', () => {
     expect(state.user).toBeNull()
   })
 
-  it('logout sends CLEAR_TOKEN message to background', () => {
-    const spy = vi.spyOn(chrome.runtime, 'sendMessage').mockResolvedValue(undefined)
+  it('logout removes token from chrome.storage.local', () => {
+    const spy = vi.spyOn(chrome.storage.local, 'remove').mockResolvedValue(undefined)
     useAuthStore.getState().logout()
-    expect(spy).toHaveBeenCalledWith({ type: 'CLEAR_TOKEN' })
+    expect(spy).toHaveBeenCalledWith(['token', 'authUser'])
   })
 })

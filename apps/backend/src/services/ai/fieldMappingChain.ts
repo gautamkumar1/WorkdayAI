@@ -31,7 +31,15 @@ Rules:
 - For dropdown fields, value MUST be one of the provided options exactly
 - For missing data, return value="" with confidence=0.0
 - Wrap the array in {{"mappings": [...]}}
-- Return ONLY the JSON object, no explanation text`
+- Return ONLY the JSON object, no explanation text
+
+Smart defaults (use when data is absent but answer is logically inferable):
+- "Have you previously worked for [Company]?" → default "No" with confidence=0.75 unless resume shows that company in experience
+- "Are you legally authorized to work?" → default "Yes" with confidence=0.7
+- "Will you now or in future require sponsorship?" → default "No" with confidence=0.65
+- "Local Given Name" / "Local Family Name" → use same value as Given Name / Family Name with confidence=0.7
+- If location has a city, use it for "City" field
+- Split phone: if phone starts with country code (+XX), put country code in "Country Phone Code" and rest in "Phone Number"`
 
 const parser = new JsonOutputParser()
 
