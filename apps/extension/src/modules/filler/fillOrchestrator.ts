@@ -30,10 +30,20 @@ function findElement(mapping: FieldMapping): HTMLElement | null {
 }
 
 async function executeOnce(mapping: FieldMapping): Promise<void> {
-  const el = findElement(mapping)
-  if (!el) throw new Error(`Element not found for field: ${mapping.fieldLabel}`)
+  const container = findElement(mapping)
+  if (!container) throw new Error(`Element not found for field: ${mapping.fieldLabel}`)
 
-  highlightField(el, 'pending')
+  // If we found a container div (formField-*), drill into the actual input
+  let el: HTMLElement = container
+  if (container.tagName === 'DIV' && mapping.fieldType !== 'dropdown') {
+    const inner =
+      container.querySelector<HTMLElement>(
+        'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), textarea',
+      ) ?? container
+    el = inner
+  }
+
+  highlightField(container, 'pending')
 
   try {
     switch (mapping.fieldType) {
@@ -42,7 +52,7 @@ async function executeOnce(mapping: FieldMapping): Promise<void> {
         await fillTextField(el as HTMLInputElement | HTMLTextAreaElement, mapping.value)
         break
       case 'dropdown':
-        await fillDropdown(el, mapping.value)
+        await fillDropdown(container, mapping.value)
         break
       case 'date':
         await fillDateField(el as HTMLInputElement, mapping.value)
@@ -57,10 +67,10 @@ async function executeOnce(mapping: FieldMapping): Promise<void> {
       case 'file':
         throw new Error('File fields must be handled separately via fillFileInput')
     }
-    highlightField(el, 'success')
-    el.setAttribute('data-wai-filled', 'true')
+    highlightField(container, 'success')
+    container.setAttribute('data-wai-filled', 'true')
   } catch (err) {
-    highlightField(el, 'error')
+    highlightField(container, 'error')
     throw err
   }
 }

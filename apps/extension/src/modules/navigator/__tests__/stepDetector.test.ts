@@ -25,9 +25,9 @@ describe('detectCurrentStep', () => {
     expect(detectCurrentStep()).toBe('login')
   })
 
-  it('detects my_information when DOM has [data-automation-id="firstName"]', () => {
+  it('detects my_information when DOM has contactInformationPage section', () => {
     setHref('https://example.myworkday.com/apply/step')
-    document.body.innerHTML = '<input data-automation-id="firstName" />'
+    document.body.innerHTML = '<div data-automation-id="contactInformationPage"></div>'
     expect(detectCurrentStep()).toBe('my_information')
   })
 
@@ -42,8 +42,9 @@ describe('detectCurrentStep', () => {
     expect(detectCurrentStep()).toBe('job_details')
   })
 
-  it('detects experience when URL contains /experience', () => {
-    setHref('https://example.myworkday.com/experience')
+  it('detects experience when DOM has myExperiencePage section', () => {
+    setHref('https://example.myworkday.com/apply/step')
+    document.body.innerHTML = '<div data-automation-id="myExperiencePage"></div>'
     expect(detectCurrentStep()).toBe('experience')
   })
 

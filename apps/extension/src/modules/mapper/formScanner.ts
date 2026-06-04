@@ -168,10 +168,14 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
 }
 
 // Known Workday page-section automation IDs — scan only the active one
+// These are the actual IDs from Workday's DOM (confirmed via ubangura/Workday-Application-Automator)
 const PAGE_SECTION_IDS = [
-  'applyFlowMyInfoPage',
+  'contactInformationPage', // My Information step
+  'myExperiencePage', // My Experience step
+  'voluntaryDisclosuresPage', // Voluntary Disclosures step
+  'selfIdentificationPage', // Self Identification step
+  'applyFlowMyInfoPage', // Some Workday tenants use this variant
   'applyFlowExperiencePage',
-  'applyFlowEducationPage',
   'applyFlowQuestionnairePage',
   'applyFlowVoluntaryPage',
   'applyFlowReviewPage',

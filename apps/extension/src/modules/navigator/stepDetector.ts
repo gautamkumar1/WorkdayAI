@@ -20,10 +20,11 @@ export function detectCurrentStep(): WorkdayStep {
     return 'job_details'
   }
 
+  // Login — confirmed IDs from ubangura/Workday-Application-Automator
   if (
     url.includes('/login') ||
     hasAutomationId('signInSubmitButton') ||
-    hasAutomationId('createAccount') ||
+    hasAutomationId('createAccountLink') ||
     hasAutomationId('utilityButtonSignIn') ||
     url.includes('/applyManually') ||
     url.includes('/autofillWithResume') ||
@@ -33,31 +34,29 @@ export function detectCurrentStep(): WorkdayStep {
     return 'login'
   }
 
+  // My Information — real section ID is contactInformationPage
   if (
-    url.includes('/myinformation') ||
-    url.includes('/my-information') ||
-    (url.includes('/application') &&
-      (hasAutomationId('legalNameSection') || hasAutomationId('addressSection'))) ||
-    hasAutomationId('legalNameSection') ||
-    hasAutomationId('addressSection') ||
-    hasAutomationId('firstName') ||
-    headingContains('My Information')
+    hasAutomationId('contactInformationPage') ||
+    hasAutomationId('legalNameSection_firstName') ||
+    hasAutomationId('addressSection_addressLine1') ||
+    hasAutomationId('applyFlowMyInfoPage') ||
+    headingContains('My Information') ||
+    headingContains('Contact Information')
   ) {
     return 'my_information'
   }
 
+  // My Experience — real section ID is myExperiencePage
   if (
-    url.includes('/experience') ||
+    hasAutomationId('myExperiencePage') ||
     hasAutomationId('workExperienceSection') ||
+    hasAutomationId('educationSection') ||
     headingContains('My Experience')
   ) {
     return 'experience'
   }
 
-  if (url.includes('/education') || hasAutomationId('educationSection')) {
-    return 'education'
-  }
-
+  // Application questions
   if (
     url.includes('/questionnaire') ||
     url.includes('/question') ||
@@ -67,12 +66,17 @@ export function detectCurrentStep(): WorkdayStep {
     return 'application_questions'
   }
 
+  // Voluntary disclosures
   if (
-    url.includes('/review') ||
-    hasAutomationId('submitButton') ||
-    hasAutomationId('submit') ||
-    headingContains('Review')
+    hasAutomationId('voluntaryDisclosuresPage') ||
+    hasAutomationId('selfIdentificationPage') ||
+    headingContains('Voluntary Disclosures') ||
+    headingContains('Self Identification')
   ) {
+    return 'experience' // grouped under experience step for progress tracking
+  }
+
+  if (url.includes('/review') || hasAutomationId('submitButton') || headingContains('Review')) {
     return 'review'
   }
 
