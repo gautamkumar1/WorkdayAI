@@ -196,9 +196,9 @@ export function scanFormFields(): FieldDescriptor[] {
     const autoId = container.getAttribute('data-automation-id') ?? ''
     if (SKIP_AUTOMATION_IDS.has(autoId)) continue
 
-    // Skip containers with zero dimensions (truly hidden)
-    const rect = container.getBoundingClientRect()
-    if (rect.width === 0 && rect.height === 0) continue
+    // Skip containers that are explicitly hidden via CSS
+    const style = window.getComputedStyle(container)
+    if (style.display === 'none' || style.visibility === 'hidden') continue
 
     const descriptor = getFieldDescriptorFromContainer(container)
     if (descriptor && descriptor.label) {
