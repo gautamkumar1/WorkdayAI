@@ -1,24 +1,45 @@
 # WorkdayAI
 
-AI-powered Chrome Extension that automates Workday job application filling. Upload your resume once — the extension parses it, maps fields using GPT-4o, and fills every step of the Workday application form automatically.
+Chrome extension that fills Workday job applications from your resume. Upload a PDF or DOCX once. The backend parses it, GPT-4o maps form fields, and the extension fills each step. You review everything before anything gets submitted.
+
+Workday login is never bypassed. You sign in yourself.
+
+---
+
+## Deliverables
+
+| Item | Location |
+|------|----------|
+| Source code | [github.com/gautamkumar1/WorkdayAI](https://github.com/gautamkumar1/WorkdayAI) |
+| Chrome extension build | Run `pnpm build:extension`, output is in `apps/extension/dist/` |
+| Documentation | This README (setup) + [Notion docs](https://app.notion.com/p/376af28c5334815f8f86d0ee7c442b88) |
+| Demo video | [Google Drive](https://drive.google.com/file/d/14gNct13FM6TR7m6VXi8jfEvwnyq27ZzN/view?usp=sharing) |
+
+### Documentation links
+
+- [Architecture design](https://app.notion.com/p/376af28c5334818b9870fa887a1b6017)
+- [AI prompting strategy](https://app.notion.com/p/376af28c5334810ba62ff60cda49e7df)
+- [Limitations](https://app.notion.com/p/376af28c53348143af2ec464c32e4bd6)
+
+Local copies also live in `docs/` if you prefer reading in the repo.
+
+---
 
 ## What it does
 
-1. You upload a PDF or DOCX resume in the extension popup
-2. The backend parses it into structured JSON (name, email, experience, education, skills, etc.)
-3. GPT-4o semantically maps your resume fields to whatever Workday form fields are on screen
-4. The extension fills every visible field with a 150–300ms delay between fills (mimicking human input)
-5. Low-confidence mappings (below 0.6) are flagged for your review before filling
-6. A final review screen shows every mapped value — you confirm before anything is submitted
-
-Workday authentication is never bypassed. You log in yourself; the extension only acts after you're authenticated.
+1. Upload a PDF or DOCX resume in the extension popup
+2. Backend parses it into JSON (name, email, experience, education, skills, etc.)
+3. GPT-4o maps resume fields to whatever Workday form fields are on screen
+4. Extension fills visible fields with a 150 to 300 ms delay between each (mimics human typing)
+5. Mappings below 0.6 confidence go to the Review tab instead of auto-fill
+6. Final review screen shows every value. Nothing submits until you confirm
 
 ---
 
 ## Stack
 
 | Layer | Technology |
-|-------|-----------|
+|-------|------------|
 | Extension | Chrome MV3, React 19, Vite, TypeScript |
 | UI | shadcn/ui, Tailwind CSS v4 |
 | State | Zustand + `chrome.storage.sync` |
@@ -31,162 +52,216 @@ Workday authentication is never bypassed. You log in yourself; the extension onl
 
 ## Prerequisites
 
+Install these before you start:
+
 - Node.js 20+
-- pnpm 9+
+- pnpm 9+ (`npm install -g pnpm` if you do not have it)
 - PostgreSQL 16+
-- Chrome browser
-- OpenAI API key
+- Google Chrome
+- OpenAI API key ([platform.openai.com](https://platform.openai.com))
 
 ---
 
-## Local Setup
+## Setup (first time)
 
-### 1. Clone and install
+### 1. Clone and install dependencies
 
 ```bash
-git clone <repo-url>
-cd workday-ai
+git clone https://github.com/gautamkumar1/WorkdayAI.git
+cd WorkdayAI
 pnpm install
 ```
 
 ### 2. Configure the backend
 
+Copy the example env file:
+
 ```bash
 cp apps/backend/.env.example apps/backend/.env
 ```
 
-Open `apps/backend/.env` and fill in:
+Open `apps/backend/.env` and set these values:
 
-| Variable | Description |
+| Variable | What to put |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `DATABASE_URL_TEST` | Separate test database URL |
-| `JWT_SECRET` | Long random string (min 32 chars) |
-| `OPENAI_API_KEY` | Your OpenAI API key (`sk-...`) |
-| `OPENAI_MODEL` | Model to use (default: `gpt-4o`) |
-| `PORT` | Backend port (default: `3000`) |
-| `EXTENSION_ORIGIN` | Chrome extension ID (fill after step 5) |
+| `DATABASE_URL` | PostgreSQL connection string for main DB |
+| `DATABASE_URL_TEST` | Separate DB URL for tests |
+| `JWT_SECRET` | Random string, at least 32 chars (`openssl rand -hex 32`) |
+| `OPENAI_API_KEY` | Your OpenAI key (`sk-...`) |
+| `OPENAI_MODEL` | `gpt-4o` (default) |
+| `PORT` | `3000` |
+| `EXTENSION_ORIGIN` | Leave blank for now. Fill in after step 5. |
 
-### 3. Set up the database
+### 3. Create databases and run migrations
 
 ```bash
-# Create the databases
 createdb workday_ai
 createdb workday_ai_test
 
-# Run migrations
 pnpm --filter backend prisma migrate dev
-
-# Seed with a test user (optional)
 pnpm --filter backend prisma db seed
 ```
+
+The seed creates a test account:
+
+- Email: `test@example.com`
+- Password: `password123`
+
+You can also register a new account from the extension popup.
 
 ### 4. Start the backend
 
 ```bash
-pnpm --filter backend dev
-# → running on http://localhost:3000
+pnpm dev:backend
 ```
 
-### 5. Build and load the extension
+API runs at `http://localhost:3000`. Leave this terminal open.
+
+### 5. Build and load the extension in Chrome
+
+In a second terminal:
 
 ```bash
-pnpm --filter extension build
+pnpm build:extension
 ```
 
 Then in Chrome:
-1. Go to `chrome://extensions`
-2. Enable **Developer mode** (top right)
+
+1. Open `chrome://extensions`
+2. Turn on **Developer mode** (top right)
 3. Click **Load unpacked**
-4. Select `apps/extension/dist/`
+4. Select the folder `apps/extension/dist/`
 
-Copy the extension ID shown on the card (e.g. `abcdefghijklmnopqrstuvwxyzabcdef`) and paste it into `EXTENSION_ORIGIN` in your `.env`:
+Copy the extension ID from the card (32-character string under the extension name).
+
+Update `EXTENSION_ORIGIN` in `apps/backend/.env`:
 
 ```
-EXTENSION_ORIGIN=chrome-extension://abcdefghijklmnopqrstuvwxyzabcdef
+EXTENSION_ORIGIN=chrome-extension://YOUR_EXTENSION_ID_HERE
 ```
 
-Restart the backend after updating `.env`.
+Restart the backend (`Ctrl+C`, then `pnpm dev:backend` again). CORS will block API calls until this matches your loaded extension.
+
+### 6. Point the extension at the backend
+
+1. Click the WorkdayAI icon in Chrome
+2. Open **Settings**
+3. Set API URL to `http://localhost:3000`
+4. Log in with `test@example.com` / `password123` (or your own account)
 
 ---
 
-## Development
+## How to run (day to day)
+
+You need two things running: the backend and a loaded extension.
+
+**Terminal 1: backend**
+
+```bash
+pnpm dev:backend
+```
+
+**Terminal 2: extension (development with hot reload)**
+
+```bash
+pnpm dev:extension
+```
+
+After code changes in dev mode, go to `chrome://extensions` and click the refresh icon on the WorkdayAI card.
+
+For a production-style build (what you submit):
+
+```bash
+pnpm build:extension
+```
+
+Then reload the extension in Chrome.
+
+---
+
+## Package the extension build (for submission)
+
+After `pnpm build:extension`:
+
+```bash
+cd apps/extension
+zip -r ../../workday-ai-extension.zip dist/
+```
+
+Send `workday-ai-extension.zip` along with the GitHub link. The reviewer unzips it and loads the `dist/` folder via **Load unpacked**.
+
+---
+
+## Using the extension on a Workday job
+
+1. Go to a Workday job posting and click **Apply**
+2. Log in to Workday when prompted (the extension waits)
+3. Click the WorkdayAI icon
+4. Upload your resume on the **Resume** tab
+5. Click **Start Autofill**
+6. Check the **Review** tab for any low-confidence fields
+7. When all steps are done, read the **Final Review** screen
+8. Click **Confirm & Submit** only when you are ready
+
+---
+
+## Development commands
 
 ```bash
 # Backend with hot reload
-pnpm --filter backend dev
+pnpm dev:backend
 
-# Extension with watch mode (rebuilds on save)
-pnpm --filter extension dev
+# Extension with watch mode
+pnpm dev:extension
 
-# Run all tests
+# Production extension build
+pnpm build:extension
+
+# Tests
 pnpm test:backend
 pnpm test:extension
 
-# Lint everything
+# Lint and format
 pnpm lint
-
-# Format everything
 pnpm format
+
+# Prisma
+pnpm --filter backend prisma studio    # DB browser
+pnpm --filter backend prisma generate  # after schema changes
 ```
 
 ---
 
-## Using the Extension
-
-1. Navigate to a Workday job posting and click **Apply**
-2. Log in to Workday when prompted (the extension waits)
-3. Click the extension icon to open the popup
-4. Go to the **Resume** tab and upload your PDF or DOCX
-5. Click **Start Autofill** — the extension begins filling fields
-6. Any low-confidence fields appear in the **Review** tab for manual input
-7. When all steps are filled, the **Final Review** screen shows every value
-8. Click **Confirm & Submit** — only then does the extension proceed to submit
-
----
-
-## Project Structure
+## Project structure
 
 ```
-workday-ai/
+WorkdayAI/
 ├── apps/
-│   ├── backend/          # Express API (port 3000)
+│   ├── backend/              # Express API (port 3000)
 │   │   ├── src/
 │   │   │   ├── routes/       # /api/auth, /api/resumes, /api/ai, /api/applications
-│   │   │   ├── services/ai/  # LangChain chains (resume parsing, field mapping, answer gen)
-│   │   │   ├── middleware/   # JWT auth, Zod validation, error handling
-│   │   │   └── prisma/       # Singleton Prisma client
+│   │   │   ├── services/ai/  # LangChain chains
+│   │   │   └── middleware/   # JWT, Zod validation, errors
 │   │   └── prisma/
-│   │       └── schema.prisma
-│   └── extension/        # Chrome Extension (MV3)
+│   └── extension/            # Chrome MV3 extension
+│       ├── dist/             # Built extension (after pnpm build:extension)
 │       └── src/
-│           ├── popup/        # React UI (600×500px)
-│           ├── content/      # Content script — DOM automation only
-│           ├── background/   # Service worker — all API calls
-│           └── modules/
-│               ├── parser/   # PDF/DOCX text extraction
-│               ├── mapper/   # Form field scanning + AI mapping
-│               ├── filler/   # Field fill engine (text/dropdown/date/radio/checkbox)
-│               ├── navigator/ # Step detection, navigation, error recovery
-│               └── dom/      # Field finder, field highlighter
+│           ├── popup/        # React UI
+│           ├── content/      # DOM automation
+│           ├── background/   # API calls, JWT
+│           └── modules/      # parser, mapper, filler, navigator
 └── packages/
-    └── shared/           # Shared TypeScript types
+    └── shared/               # Shared TypeScript types
 ```
 
 ---
 
-## Architecture
+## Troubleshooting
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full request/response flow, component diagram, and module responsibilities.
-
-## AI Prompts
-
-See [docs/AI_PROMPTS.md](docs/AI_PROMPTS.md) for the full prompt templates used for resume parsing, field mapping, and answer generation.
-
-## Workday DOM Notes
-
-See [docs/WORKDAY_DOM.md](docs/WORKDAY_DOM.md) for the DOM structure of the 4 target job postings and all field types encountered.
-
-## Known Limitations
-
-See [docs/LIMITATIONS.md](docs/LIMITATIONS.md) for unsupported field types and known Workday UI variants.
+| Problem | Fix |
+|---------|-----|
+| CORS error in extension console | Set `EXTENSION_ORIGIN` to your extension ID and restart backend |
+| Extension cannot reach API | Check Settings: API URL should be `http://localhost:3000` |
+| Database connection failed | Confirm PostgreSQL is running and `DATABASE_URL` is correct |
+| OpenAI errors | Check `OPENAI_API_KEY` in `.env` and your OpenAI account balance |
+| Fields not filling | Log in to Workday first, then start autofill on an application page |
