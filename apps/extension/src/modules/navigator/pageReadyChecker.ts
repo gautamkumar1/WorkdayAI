@@ -11,8 +11,16 @@ export function waitForPageReady(timeoutMs = 10000): Promise<void> {
       const ariaBusy = document.querySelector('[aria-busy="true"]')
       if (ariaBusy) return false
 
-      const progressBar = document.querySelector('[role="progressbar"]')
-      if (progressBar) return false
+      // Only block on progress bars that are actively loading (aria-valuenow changing or indeterminate)
+      // The Workday step progress bar is always present but has fixed aria-valuenow — don't block on it.
+      const progressBars = document.querySelectorAll('[role="progressbar"]')
+      for (const pb of progressBars) {
+        // A loading spinner has no aria-valuenow, or aria-valuemax equals aria-valuenow while animating
+        const valueNow = pb.getAttribute('aria-valuenow')
+        const valueMax = pb.getAttribute('aria-valuemax')
+        // If it has no valuenow it's an indeterminate spinner (truly loading)
+        if (valueNow === null && valueMax === null) return false
+      }
 
       return true
     }

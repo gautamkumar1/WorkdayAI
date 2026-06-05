@@ -43,6 +43,10 @@ function findContainer(mapping: FieldMapping): HTMLElement | null {
       const container = withoutPrefix.closest<HTMLElement>('[data-automation-id^="formField-"]')
       return container ?? withoutPrefix
     }
+
+    // 4. Inline listbox by element id (Application Questions pattern — automationId is the listbox's id)
+    const byId = document.getElementById(mapping.automationId)
+    if (byId) return byId
   }
 
   // 4. Label-based fallback — search label elements and Workday label divs

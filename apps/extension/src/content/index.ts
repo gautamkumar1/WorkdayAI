@@ -230,7 +230,43 @@ async function handleContentMessage(message: ContentMessage): Promise<unknown> {
         text: el.textContent?.trim().slice(0, 60),
       }))
       const scanned = scanFormFields()
-      return { ids, scanned }
+
+      // Also dump inline listbox info for diagnosing Application Questions page
+      const allListboxes = Array.from(document.body.querySelectorAll('ul[role="listbox"]'))
+      const listboxDump = allListboxes.map((lb) => {
+        const el = lb as HTMLElement
+        const style = window.getComputedStyle(el)
+        const options = Array.from(lb.querySelectorAll('[role="option"]')).map((o) =>
+          o.textContent?.trim(),
+        )
+        // Walk ancestors for label
+        let labelCandidate = ''
+        let cur: Element | null = lb
+        const ancestorLog: string[] = []
+        for (let d = 0; d < 6 && cur && cur !== document.body; d++) {
+          const parent = cur.parentElement
+          if (!parent) break
+          for (const child of Array.from(parent.children)) {
+            if (child === cur) break
+            const t = child.textContent?.trim().slice(0, 100) ?? ''
+            if (t) ancestorLog.push(`depth${d}: "${t}"`)
+            if (t.length > 5 && !labelCandidate) labelCandidate = t
+          }
+          cur = parent
+        }
+        return {
+          id: lb.id,
+          display: style.display,
+          visibility: style.visibility,
+          optionCount: options.length,
+          options: options.slice(0, 5),
+          insideFormField: !!lb.closest('[data-automation-id^="formField-"]'),
+          labelCandidate,
+          ancestorLog,
+        }
+      })
+
+      return { ids, scanned, listboxDump }
     }
   }
 }

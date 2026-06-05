@@ -18,6 +18,7 @@ const SKIP_AUTOMATION_IDS = new Set([
 // Known Workday page-section automation IDs — confirmed from multiple Workday tenants
 const PAGE_SECTION_IDS = [
   'applyFlowMyInfoPage',
+  'applyFlowMyExpPage', // confirmed real: My Experience on NVIDIA Workday
   'contactInformationPage',
   'myExperiencePage',
   'voluntaryDisclosuresPage',
@@ -32,7 +33,20 @@ const PAGE_SECTION_IDS = [
 ]
 
 function getLabelText(container: Element): string {
-  // Strategy 1: direct child <label>
+  // Strategy 1a: fieldset > legend > label (used by date fields like firstYearAttended)
+  const legendLabel = container.querySelector('fieldset > legend > label, legend label')
+  if (legendLabel) {
+    return legendLabel.textContent?.replace(/\*/g, '').trim() ?? ''
+  }
+
+  // Strategy 1b: fieldset > legend with richText div (Application Questions pattern)
+  // Structure: legend > div > div[data-automation-id="richText"] > p > span
+  const richTextInLegend = container.querySelector('legend [data-automation-id="richText"]')
+  if (richTextInLegend) {
+    return richTextInLegend.textContent?.replace(/\*/g, '').trim() ?? ''
+  }
+
+  // Strategy 2: direct child <label>
   for (const child of Array.from(container.children)) {
     if (child.tagName === 'LABEL') {
       return child.textContent?.replace(/\*/g, '').trim() ?? ''
@@ -126,6 +140,29 @@ function getLabelText(container: Element): string {
     'formField-usePreferredName': 'I have a preferred name',
     // Email
     'formField-email': 'Email Address',
+    // My Experience — Education (confirmed real IDs from NVIDIA Workday)
+    'formField-schoolName': 'School',
+    'formField-schoolItem': 'School',
+    'formField-degree': 'Degree',
+    'formField-fieldOfStudy': 'Field of Study',
+    'formField-field-of-study': 'Field of Study',
+    'formField-gradeAverage': 'GPA',
+    'formField-firstYearAttended': 'Start Year',
+    'formField-lastYearAttended': 'End Year',
+    // My Experience — Work
+    'formField-jobTitle': 'Job Title',
+    'formField-company': 'Company',
+    'formField-location': 'Location',
+    'formField-startDate': 'Start Date',
+    'formField-endDate': 'End Date',
+    'formField-description': 'Description',
+    // My Experience — Links (confirmed real IDs from NVIDIA Workday)
+    'formField-linkedInAccount': 'LinkedIn Profile',
+    'formField-linkedinQuestion': 'LinkedIn Profile',
+    'formField-websiteUrl': 'Website URL',
+    // Skills
+    'formField-skills': 'Skills',
+    'formField-skillsPrompt': 'Skills',
   }
   if (KNOWN_LABELS[autoId]) return KNOWN_LABELS[autoId]!
 
@@ -216,8 +253,14 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
     }
   }
 
-  // Workday button dropdown (aria-haspopup="listbox") — phone-device-type, countryRegion, etc.
-  const dropdownBtn = container.querySelector<HTMLElement>('button[aria-haspopup="listbox"]')
+  // Workday button dropdown — aria-haspopup="listbox" or named automation ID buttons
+  // (degree, fieldOfStudy, etc. use button[data-automation-id="degree"] without aria-haspopup)
+  const dropdownBtn =
+    container.querySelector<HTMLElement>('button[aria-haspopup="listbox"]') ??
+    container.querySelector<HTMLElement>('button[aria-haspopup="true"]') ??
+    container.querySelector<HTMLElement>(
+      `button[data-automation-id="${autoId.replace('formField-', '')}"]`,
+    )
   if (dropdownBtn) {
     return {
       label,
@@ -228,6 +271,33 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
       options: null,
       required: container.querySelector('[aria-required="true"]') !== null,
       currentValue: dropdownBtn.textContent?.trim() || null,
+    }
+  }
+
+  // Application Questions pattern: always-visible <ul role="listbox"> with <li role="option"> items
+  // (no button trigger — the listbox is rendered inline in the DOM)
+  const inlineListbox = container.querySelector<HTMLElement>('ul[role="listbox"], [role="listbox"]')
+  if (inlineListbox) {
+    const options = Array.from(inlineListbox.querySelectorAll<HTMLElement>('[role="option"]'))
+      .filter(
+        (o) =>
+          o.getAttribute('aria-disabled') !== 'true' &&
+          o.textContent?.trim().toLowerCase() !== 'select one',
+      )
+      .map((o) => o.textContent?.trim() ?? '')
+      .filter(Boolean)
+    const selected = inlineListbox.querySelector<HTMLElement>(
+      '[role="option"][aria-selected="true"]:not([aria-disabled="true"])',
+    )
+    return {
+      label,
+      type: 'dropdown',
+      automationId: autoId,
+      ariaLabel: inlineListbox.getAttribute('aria-label'),
+      placeholder: null,
+      options,
+      required: container.querySelector('[aria-required="true"]') !== null,
+      currentValue: selected?.textContent?.trim() || null,
     }
   }
 
@@ -285,6 +355,88 @@ function findActiveSection(): Element {
   return document.body
 }
 
+// Find label text for an inline listbox by walking up its ancestor chain and checking siblings.
+function findLabelForListbox(listbox: HTMLElement): string {
+  // Walk up through ancestors looking for a preceding sibling or label
+  let current: Element | null = listbox
+  while (current && current !== document.body) {
+    const parent = current.parentElement
+    if (!parent) break
+
+    // Check elements that come before `current` in the parent's children
+    for (const child of Array.from(parent.children)) {
+      if (child === current) break
+      // Skip elements that contain another listbox
+      if (child.querySelector('ul[role="listbox"], [role="listbox"]')) continue
+      const text = child.textContent?.replace(/\*/g, '').trim() ?? ''
+      if (text.length > 5 && text.length < 400) return text
+    }
+
+    // Check for a <label> anywhere in the parent (not inside the listbox itself)
+    for (const label of Array.from(parent.querySelectorAll<HTMLElement>('label'))) {
+      if (listbox.contains(label)) continue
+      const text = label.textContent?.replace(/\*/g, '').trim() ?? ''
+      if (text.length > 5) return text
+    }
+
+    current = parent
+  }
+  return ''
+}
+
+// Scan Application Questions page: inline listboxes that live outside formField-* containers.
+// These are always-visible <ul role="listbox"> dropdowns with a label in a preceding sibling.
+// Always scans document.body so the active section root doesn't exclude them.
+function scanInlineListboxFields(): FieldDescriptor[] {
+  const results: FieldDescriptor[] = []
+  const seen = new Set<Element>()
+
+  const listboxes = Array.from(document.body.querySelectorAll<HTMLElement>('ul[role="listbox"]'))
+  for (const listbox of listboxes) {
+    // Already covered by getFieldDescriptorFromContainer
+    if (listbox.closest('[data-automation-id^="formField-"]')) continue
+
+    const style = window.getComputedStyle(listbox)
+    if (style.display === 'none' || style.visibility === 'hidden') continue
+    // Must have real option items (not just a portal placeholder)
+    if (listbox.querySelectorAll('[role="option"]').length < 2) continue
+
+    if (seen.has(listbox)) continue
+    seen.add(listbox)
+
+    const labelText = findLabelForListbox(listbox)
+    if (!labelText) continue
+
+    const options = Array.from(listbox.querySelectorAll<HTMLElement>('[role="option"]'))
+      .filter(
+        (o) =>
+          o.getAttribute('aria-disabled') !== 'true' &&
+          o.textContent?.trim().toLowerCase() !== 'select one',
+      )
+      .map((o) => o.textContent?.trim() ?? '')
+      .filter(Boolean)
+    const selected = listbox.querySelector<HTMLElement>(
+      '[role="option"][aria-selected="true"]:not([aria-disabled="true"])',
+    )
+    const required =
+      listbox.getAttribute('aria-required') === 'true' ||
+      listbox.closest('[aria-required="true"]') !== null
+
+    results.push({
+      label: labelText,
+      type: 'dropdown',
+      automationId: listbox.id || null,
+      ariaLabel: listbox.getAttribute('aria-label'),
+      placeholder: null,
+      options,
+      required,
+      currentValue: selected?.textContent?.trim() || null,
+    })
+  }
+
+  return results
+}
+
 export function scanFormFields(): FieldDescriptor[] {
   const results: FieldDescriptor[] = []
   const root = findActiveSection()
@@ -304,6 +456,10 @@ export function scanFormFields(): FieldDescriptor[] {
       results.push(descriptor)
     }
   }
+
+  // Also scan inline listbox fields that live outside formField-* containers
+  // (Application Questions page pattern — always searches document.body)
+  results.push(...scanInlineListboxFields())
 
   return results
 }

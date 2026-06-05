@@ -270,13 +270,28 @@ function fillNativeSelect(select: HTMLSelectElement, value: string): boolean {
   return true
 }
 
+async function fillInlineListbox(listbox: HTMLElement, value: string): Promise<boolean> {
+  const option = findOptionInListbox(listbox, value)
+  if (!option) return false
+  option.scrollIntoView({ block: 'nearest' })
+  await wait(100)
+  option.click()
+  await wait(200)
+  return true
+}
+
 export async function fillDropdown(element: HTMLElement, value: string): Promise<boolean> {
   // 1. Element is directly a native <select>
   if (element instanceof HTMLSelectElement) {
     return fillNativeSelect(element, value)
   }
 
-  // 2. Container has a visible native <select> inside
+  // 2. Element is directly the inline listbox (Application Questions pattern)
+  if (element.getAttribute('role') === 'listbox') {
+    return fillInlineListbox(element, value)
+  }
+
+  // 3. Container has a visible native <select> inside
   // Only take this path if the select is actually rendered (not a hidden accessibility shim).
   // Workday sometimes injects a display:none <select> alongside its custom button+listbox widget.
   const innerSelect = element.querySelector<HTMLSelectElement>('select')
@@ -297,7 +312,14 @@ export async function fillDropdown(element: HTMLElement, value: string): Promise
     return fillMultiselectChevron(element, value)
   }
 
-  // 4. Button+listbox dropdown (formField-phoneType, formField-countryRegion, etc.)
+  // 4. Application Questions pattern: always-visible inline listbox (ul[role="listbox"])
+  // These dropdowns have options always present in the DOM — no button needed to open them.
+  const inlineListbox = element.querySelector<HTMLElement>('ul[role="listbox"], [role="listbox"]')
+  if (inlineListbox) {
+    return fillInlineListbox(inlineListbox, value)
+  }
+
+  // 5. Button+listbox dropdown (formField-phoneType, formField-countryRegion, etc.)
   const btn =
     element.querySelector<HTMLElement>('button[aria-haspopup="listbox"]') ??
     element.querySelector<HTMLElement>('button')

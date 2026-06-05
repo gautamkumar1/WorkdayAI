@@ -171,6 +171,62 @@ export default function AutofillPanel() {
           mapping.confidence = 0.8
           mapping.needsReview = false
         }
+        // LinkedIn — validate URL format; clear if malformed so field stays empty (valid)
+        if (label === 'linkedin profile' || label === 'linkedin url') {
+          if (m.value) {
+            try {
+              const url = new URL(m.value.startsWith('http') ? m.value : `https://${m.value}`)
+              if (!url.hostname.includes('linkedin')) {
+                mapping.value = ''
+                mapping.needsReview = true
+              } else {
+                mapping.needsReview = false
+                mapping.confidence = 0.9
+              }
+            } catch {
+              mapping.value = ''
+              mapping.needsReview = true
+            }
+          }
+        }
+        // Degree — ensure AI returns something; default to Bachelor's if missing
+        if (label === 'degree' && (!m.value || m.confidence < 0.6)) {
+          // NVIDIA Workday options: BTECH, MTECH, MCA, Post-diploma studies, University Diploma
+          // Other tenants: Bachelor's Degree, Master's Degree, etc.
+          // Use BTECH as default for Indian applicants; findOptionInListbox will partial-match
+          mapping.value = 'BTECH'
+          mapping.confidence = 0.75
+          mapping.needsReview = false
+        }
+        // File upload — skip autofill (handled separately via UPLOAD_RESUME message)
+        if (
+          label === 'upload a file (5mb max)' ||
+          label === 'resume' ||
+          label === 'upload resume'
+        ) {
+          mapping.needsReview = true
+        }
+        // Work authorization questions (Application Questions page)
+        if (
+          (label.includes('legally authorized to work') ||
+            label.includes('authorized to work in')) &&
+          (!m.value || m.confidence < 0.7)
+        ) {
+          mapping.value = 'Yes'
+          mapping.confidence = 0.95
+          mapping.needsReview = false
+        }
+        if (
+          (label.includes('require employer support') ||
+            label.includes('work permit') ||
+            label.includes('require sponsorship') ||
+            label.includes('immigration support')) &&
+          (!m.value || m.confidence < 0.7)
+        ) {
+          mapping.value = 'Yes'
+          mapping.confidence = 0.95
+          mapping.needsReview = false
+        }
         if (label === 'postal code' && m.confidence < 0.6) {
           // Keep whatever AI found; only clear needsReview if AI gave a value
           if (m.value) {
@@ -207,6 +263,20 @@ export default function AutofillPanel() {
       if (fillRes.error) throw new Error(fillRes.error)
 
       fillRes.results.forEach(updateFillResult)
+
+      // 5. Upload resume file if on My Experience page and file is available
+      const { file } = useResumeStore.getState()
+      if (file && fields.some((f) => f.label.toLowerCase().includes('upload'))) {
+        setStatusMsg('Uploading resume file…')
+        const arrayBuffer = await file.arrayBuffer()
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+        await sendToContentScript<{ success: boolean }>({
+          type: 'UPLOAD_RESUME',
+          fileName: file.name,
+          mimeType: file.type,
+          base64,
+        }).catch(() => {}) // non-fatal if upload fails
+      }
 
       const succeeded = fillRes.results.filter((r) => r.status === 'success').length
       const failed = fillRes.results.filter(
