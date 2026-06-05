@@ -35,11 +35,17 @@ export default function AutofillPanel() {
   async function sendToContentScript<T>(message: unknown): Promise<T> {
     return new Promise((resolve, reject) => {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        const tabId = tabs[0]?.id
-        if (!tabId) return reject(new Error('No active tab found'))
-        chrome.tabs.sendMessage(tabId, message, (response: T) => {
+        const tab = tabs[0]
+        if (!tab?.id) return reject(new Error('No active tab found'))
+        const url = tab.url ?? ''
+        if (!url.includes('myworkday')) {
+          return reject(
+            new Error('Navigate to a Workday job page first, then click Start Autofill.'),
+          )
+        }
+        chrome.tabs.sendMessage(tab.id, message, (response: T) => {
           if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message))
+            reject(new Error('Content script not ready. Reload the Workday page and try again.'))
           } else {
             resolve(response)
           }
@@ -93,15 +99,87 @@ export default function AutofillPanel() {
         },
         { headers: { 'Content-Type': 'application/json', ...authHeaders } },
       )
-      // Attach automationId from scanned fields back onto AI mappings (matched by label)
-      const labelToAutomationId = new Map(
-        fields.map((f) => [f.label.toLowerCase(), f.automationId]),
-      )
+      // Attach automationId and fieldType from scanned fields back onto AI mappings
+      const labelToField = new Map(fields.map((f) => [f.label.toLowerCase(), f]))
       const { mappings } = mapRes.data.data
-      const mappingsWithId = mappings.map((m) => ({
-        ...m,
-        automationId: labelToAutomationId.get(m.fieldLabel.toLowerCase()) ?? null,
-      }))
+
+      // Parse location string into city/state/postalCode for client-side defaults
+      // location is typically "City, State, Country" or "City, Country"
+      const locationParts = (
+        ((parsedData as Record<string, unknown>).location as string | null) ?? ''
+      )
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+      const locationCity = locationParts[0] ?? ''
+      const locationState = locationParts.length >= 3 ? locationParts[1] : ''
+
+      const mappingsWithId = mappings.map((m) => {
+        const scanned = labelToField.get(m.fieldLabel.toLowerCase())
+        const mapping = {
+          ...m,
+          automationId: scanned?.automationId ?? null,
+          // fieldType must come from the scanner — AI doesn't return it
+          fieldType: scanned?.type ?? m.fieldType,
+        }
+        const label = m.fieldLabel.toLowerCase()
+
+        // Hard defaults — override AI when value is missing or confidence too low
+        if (label === 'country' && (!m.value || m.confidence < 0.6)) {
+          mapping.value = 'India'
+          mapping.confidence = 0.95
+          mapping.needsReview = false
+        }
+        if (label === 'city' && !m.value && locationCity) {
+          mapping.value = locationCity
+          mapping.confidence = 0.85
+          mapping.needsReview = false
+        }
+        if ((label === 'state' || label === 'state/region') && !m.value && locationState) {
+          mapping.value = locationState
+          mapping.confidence = 0.8
+          mapping.needsReview = false
+        }
+        if (label === 'address line 1' && !m.value && locationCity) {
+          // Use city as a stand-in so the field isn't blank — user can correct
+          mapping.value = locationCity
+          mapping.confidence = 0.65
+          mapping.needsReview = false
+        }
+        if (label === 'phone extension' && !m.value) {
+          mapping.value = ''
+          mapping.confidence = 0.95
+          mapping.needsReview = false
+        }
+        if (label === 'country phone code') {
+          // Field shows "India (+91)" by default — always force it to India
+          mapping.value = 'India (+91)'
+          mapping.confidence = 0.95
+          mapping.needsReview = false
+        }
+        if (label === 'phone device type' && (!m.value || m.confidence < 0.7)) {
+          mapping.value = 'Home'
+          mapping.confidence = 0.9
+          mapping.needsReview = false
+        }
+        if (label === 'how did you hear about us?' && (!m.value || m.confidence < 0.6)) {
+          // Two-level Workday multiselect. Top-level categories: Associations, Event/Conference,
+          // Job Board, Social Media, University, Website. Clicking a category replaces the list
+          // The search box searches across ALL sub-options, so type a specific sub-option name.
+          // "Indeed" lives under Job Board and will appear in filtered results directly.
+          mapping.value = 'Indeed'
+          mapping.confidence = 0.8
+          mapping.needsReview = false
+        }
+        if (label === 'postal code' && m.confidence < 0.6) {
+          // Keep whatever AI found; only clear needsReview if AI gave a value
+          if (m.value) {
+            mapping.needsReview = false
+            mapping.confidence = Math.max(m.confidence, 0.65)
+          }
+        }
+        return mapping
+      })
       const { autoFill, needsReview } = splitByConfidence(mappingsWithId)
 
       // Record in store so Review tab shows low-confidence fields

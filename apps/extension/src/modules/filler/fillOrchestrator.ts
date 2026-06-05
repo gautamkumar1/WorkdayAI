@@ -4,7 +4,7 @@ import { fillDropdown } from './dropdownFiller.js'
 import { fillDateField } from './dateFiller.js'
 import { fillRadio } from './radioFiller.js'
 import { fillCheckbox } from './checkboxFiller.js'
-import { findFieldByAutomationId, findFieldByAriaLabel, findFieldByLabel } from '../dom/fieldFinder'
+import { findFieldByAriaLabel, findFieldByLabel } from '../dom/fieldFinder'
 import { highlightField } from '../dom/fieldHighlighter'
 
 function randomDelay(min = 150, max = 300): number {
@@ -15,55 +15,102 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function findElement(mapping: FieldMapping): HTMLElement | null {
-  // 1. Use automationId from scanner if available (most precise)
+// Resolve to the formField-* container div. The automationId in the mapping may point
+// to either the container (formField-legalNameSection_firstName) or the inner element
+// (legalNameSection_firstName). We always want the container.
+function findContainer(mapping: FieldMapping): HTMLElement | null {
+  // 1. Try automationId directly (may be the container or an inner element)
   if (mapping.automationId) {
-    const byId = findFieldByAutomationId(mapping.automationId) as HTMLElement | null
-    if (byId) return byId
+    const el = document.querySelector<HTMLElement>(`[data-automation-id="${mapping.automationId}"]`)
+    if (el) {
+      const container = el.closest<HTMLElement>('[data-automation-id^="formField-"]')
+      return container ?? el
+    }
+
+    // 2. Try with formField- prefix in case scanner stored inner ID
+    const withPrefix = document.querySelector<HTMLElement>(
+      `[data-automation-id="formField-${mapping.automationId}"]`,
+    )
+    if (withPrefix) return withPrefix
+
+    // 3. Try without formField- prefix (inner element, then walk up)
+    const withoutPrefix = mapping.automationId.startsWith('formField-')
+      ? document.querySelector<HTMLElement>(
+          `[data-automation-id="${mapping.automationId.replace('formField-', '')}"]`,
+        )
+      : null
+    if (withoutPrefix) {
+      const container = withoutPrefix.closest<HTMLElement>('[data-automation-id^="formField-"]')
+      return container ?? withoutPrefix
+    }
   }
-  // 2. Fall back to label-based lookup
-  return (
-    (findFieldByAutomationId(mapping.fieldLabel) as HTMLElement | null) ??
+
+  // 4. Label-based fallback — search label elements and Workday label divs
+  const labelLower = mapping.fieldLabel.toLowerCase().replace(/\*/g, '').trim()
+
+  // Check all formField containers for a label text match
+  const allContainers = document.querySelectorAll<HTMLElement>('[data-automation-id^="formField-"]')
+  for (const container of allContainers) {
+    const labelEl = container.querySelector('[data-automation-id$="Label"], label')
+    const text = labelEl?.textContent?.replace(/\*/g, '').trim().toLowerCase() ?? ''
+    if (text === labelLower) return container
+  }
+
+  // 5. aria-label or findFieldByLabel then walk up
+  const byLabel =
     (findFieldByAriaLabel(mapping.fieldLabel) as HTMLElement | null) ??
     (findFieldByLabel(mapping.fieldLabel) as HTMLElement | null)
-  )
+  if (byLabel) {
+    const container = byLabel.closest<HTMLElement>('[data-automation-id^="formField-"]')
+    return container ?? byLabel
+  }
+
+  return null
 }
 
 async function executeOnce(mapping: FieldMapping): Promise<void> {
-  const container = findElement(mapping)
+  const container = findContainer(mapping)
   if (!container) throw new Error(`Element not found for field: ${mapping.fieldLabel}`)
-
-  // If we found a container div (formField-*), drill into the actual input
-  let el: HTMLElement = container
-  if (container.tagName === 'DIV' && mapping.fieldType !== 'dropdown') {
-    const inner =
-      container.querySelector<HTMLElement>(
-        'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), textarea',
-      ) ?? container
-    el = inner
-  }
 
   highlightField(container, 'pending')
 
   try {
     switch (mapping.fieldType) {
       case 'text':
-      case 'textarea':
-        await fillTextField(el as HTMLInputElement | HTMLTextAreaElement, mapping.value)
+      case 'textarea': {
+        // Drill to the actual input/textarea inside the container
+        const inner = container.querySelector<HTMLInputElement | HTMLTextAreaElement>(
+          'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), textarea',
+        )
+        if (!inner) throw new Error(`No text input found in container for: ${mapping.fieldLabel}`)
+        await fillTextField(inner, mapping.value)
         break
+      }
       case 'dropdown':
         await fillDropdown(container, mapping.value)
         break
-      case 'date':
-        await fillDateField(el as HTMLInputElement, mapping.value)
+      case 'date': {
+        const dateInput = container.querySelector<HTMLInputElement>('input[type="date"], input')
+        if (!dateInput) throw new Error(`No date input found for: ${mapping.fieldLabel}`)
+        await fillDateField(dateInput, mapping.value)
         break
+      }
       case 'radio':
-        // Use automationId (radio name attr) if available, else fall back to label
         await fillRadio(mapping.automationId ?? mapping.fieldLabel, mapping.value)
         break
-      case 'checkbox':
-        await fillCheckbox(el as HTMLInputElement, mapping.value === 'true')
+      case 'checkbox': {
+        const checkbox = container.querySelector<HTMLInputElement>('input[type="checkbox"]')
+        if (checkbox) {
+          await fillCheckbox(checkbox, mapping.value === 'true')
+        } else {
+          // Workday renders some checkboxes as div[role="checkbox"]
+          const ariaBox = container.querySelector<HTMLElement>('[role="checkbox"]')
+          if (!ariaBox) throw new Error(`No checkbox found for: ${mapping.fieldLabel}`)
+          const isChecked = ariaBox.getAttribute('aria-checked') === 'true'
+          if (isChecked !== (mapping.value === 'true')) ariaBox.click()
+        }
         break
+      }
       case 'file':
         throw new Error('File fields must be handled separately via fillFileInput')
     }

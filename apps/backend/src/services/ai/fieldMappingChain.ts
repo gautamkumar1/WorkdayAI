@@ -39,8 +39,22 @@ Smart defaults (use when data is absent but answer is logically inferable):
 - "Have you previously worked for [Company]?" → default "No" with confidence=0.75 unless resume shows that company in experience
 - "Are you legally authorized to work?" → default "Yes" with confidence=0.7
 - "Will you now or in future require sponsorship?" → default "No" with confidence=0.65
-- "Local Given Name" / "Local Family Name" → use same value as Given Name / Family Name with confidence=0.7
-- If location has a city, use it for "City" field
+- "Local Given Name(s)" / "Local Family Name" → use same value as Given Name / Family Name with confidence=0.85
+- "Given Name(s)" → map to firstName from resume name with confidence=0.95
+- "Family Name" → map to lastName from resume name with confidence=0.95
+- "I have a preferred name" → default value="false" (checkbox unchecked) with confidence=0.9
+- "Country" field → ALWAYS return "India" with confidence=0.95 (default country for this applicant)
+- "Country Phone Code" → return "India (+91)" or the option containing "India" with confidence=0.95
+- "Phone Device Type" → default "Home" with confidence=0.9
+- "How Did You Hear About Us?" → if options are provided pick "Internet Search" or the closest match; if no options return "Internet Search" with confidence=0.8
+- "Phone Extension" → default "" (empty string) with confidence=0.95 — never leave as needsReview
+- "Email Address" field → use email from resume with confidence=0.99
+
+Address parsing rules (the resume location field is a single string like "Mumbai, Maharashtra, India"):
+- "City" → extract the city portion from location (first segment before comma). confidence=0.85
+- "State" or "State/Region" → extract the state/province from location (middle segment). confidence=0.8
+- "Address Line 1" → if a street address is in the resume use it; otherwise use the city name as a stand-in with confidence=0.6 so the user can correct it
+- "Postal Code" → extract if present in location string; otherwise return "" with confidence=0.5 (flagged for review)
 - Split phone: if phone starts with country code (+XX), put country code in "Country Phone Code" and rest in "Phone Number"`
 
 const parser = new JsonOutputParser()

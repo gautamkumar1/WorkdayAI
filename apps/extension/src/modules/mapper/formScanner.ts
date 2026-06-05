@@ -17,15 +17,18 @@ const SKIP_AUTOMATION_IDS = new Set([
 
 // Known Workday page-section automation IDs — confirmed from multiple Workday tenants
 const PAGE_SECTION_IDS = [
+  'applyFlowMyInfoPage',
   'contactInformationPage',
   'myExperiencePage',
   'voluntaryDisclosuresPage',
   'selfIdentificationPage',
-  'applyFlowMyInfoPage',
   'applyFlowExperiencePage',
   'applyFlowQuestionnairePage',
   'applyFlowVoluntaryPage',
   'applyFlowReviewPage',
+  'legalNameSection',
+  'addressSection',
+  'phoneSection',
 ]
 
 function getLabelText(container: Element): string {
@@ -65,23 +68,64 @@ function getLabelText(container: Element): string {
 
   // Strategy 4: known Workday automation ID → human label mapping
   const autoId = container.getAttribute('data-automation-id') ?? ''
+  // Real Workday automation IDs confirmed from ubangura/Workday-Application-Automator
+  // and WeKruit/Hand-X toy fixture. Two naming conventions exist across tenants:
+  //   1. underscore:   formField-legalNameSection_firstName  (most common, confirmed)
+  //   2. double-dash:  formField-legalName--firstName        (older tenants)
   const KNOWN_LABELS: Record<string, string> = {
     'formField-source': 'How Did You Hear About Us?',
+    'formField-referral': 'How Did You Hear About Us?',
     'formField-candidateIsPreviousWorker': 'Have you previously worked for this company?',
+    'formField-previousWorker': 'Have you previously worked for this company?',
     'formField-country': 'Country',
-    'formField-legalName--firstName': 'First Name',
-    'formField-legalName--lastName': 'Last Name',
+    // Legal Name — underscore convention (confirmed real)
+    'formField-legalNameSection_firstName': 'Given Name(s)',
+    'formField-legalNameSection_lastName': 'Family Name',
+    'formField-legalNameSection_firstNameLocal': 'Local Given Name(s)',
+    'formField-legalNameSection_lastNameLocal': 'Local Family Name',
+    'formField-legalNameSection_preferredName': 'I have a preferred name',
+    // Legal Name — double-dash convention (older tenants)
+    'formField-legalName--firstName': 'Given Name(s)',
+    'formField-legalName--givenName': 'Given Name(s)',
+    'formField-legalName--lastName': 'Family Name',
+    'formField-legalName--familyName': 'Family Name',
     'formField-legalName--firstNameLocal': 'Local Given Name(s)',
+    'formField-legalName--givenNameLocal': 'Local Given Name(s)',
     'formField-legalName--lastNameLocal': 'Local Family Name',
+    'formField-legalName--familyNameLocal': 'Local Family Name',
+    // Other name variants
+    'formField-givenName': 'Given Name(s)',
+    'formField-firstName': 'Given Name(s)',
+    'formField-familyName': 'Family Name',
+    'formField-lastName': 'Family Name',
+    // Address — underscore convention (confirmed real)
+    'formField-addressSection_addressLine1': 'Address Line 1',
+    'formField-addressSection_addressLine2': 'Address Line 2',
+    'formField-addressSection_city': 'City',
+    'formField-addressSection_postalCode': 'Postal Code',
+    'formField-addressSection_countryRegion': 'State',
+    // Address — flat convention
     'formField-addressLine1': 'Address Line 1',
+    'formField-addressLine2': 'Address Line 2',
     'formField-city': 'City',
     'formField-postalCode': 'Postal Code',
-    'formField-countryRegion': 'State/Region',
+    'formField-countryRegion': 'State',
+    'formField-stateProvince': 'State',
+    // Phone — confirmed real IDs from ubangura repo
+    'formField-phone-device-type': 'Phone Device Type',
+    'formField-phone-number': 'Phone Number',
+    'formField-phone': 'Phone Number',
+    // Phone — alternate conventions
     'formField-phoneType': 'Phone Device Type',
     'formField-countryPhoneCode': 'Country Phone Code',
     'formField-phoneNumber': 'Phone Number',
     'formField-extension': 'Phone Extension',
+    'formField-phone-extension': 'Phone Extension',
+    // Preferred name checkbox
     'formField-preferredCheck': 'I have a preferred name',
+    'formField-usePreferredName': 'I have a preferred name',
+    // Email
+    'formField-email': 'Email Address',
   }
   if (KNOWN_LABELS[autoId]) return KNOWN_LABELS[autoId]!
 
@@ -110,18 +154,31 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
     }
   }
 
-  // Checkbox
+  // Checkbox — real input or Workday's div[role="checkbox"]
   const checkbox = container.querySelector<HTMLInputElement>('input[type="checkbox"]')
+  const ariaCheckbox = container.querySelector<HTMLElement>('[role="checkbox"]')
   if (checkbox) {
     return {
       label,
       type: 'checkbox',
-      automationId: checkbox.getAttribute('data-automation-id') ?? autoId,
+      automationId: autoId, // always store container ID so filler can querySelector into it
       ariaLabel: checkbox.getAttribute('aria-label'),
       placeholder: null,
       options: null,
       required: false,
       currentValue: checkbox.checked ? 'true' : 'false',
+    }
+  }
+  if (ariaCheckbox) {
+    return {
+      label,
+      type: 'checkbox',
+      automationId: autoId,
+      ariaLabel: ariaCheckbox.getAttribute('aria-label'),
+      placeholder: null,
+      options: null,
+      required: false,
+      currentValue: ariaCheckbox.getAttribute('aria-checked') === 'true' ? 'true' : 'false',
     }
   }
 
@@ -131,7 +188,7 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
     return {
       label,
       type: 'dropdown',
-      automationId: select.getAttribute('data-automation-id') ?? autoId,
+      automationId: autoId, // always container ID
       ariaLabel: select.getAttribute('aria-label'),
       placeholder: null,
       options: Array.from(select.options)
@@ -159,6 +216,21 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
     }
   }
 
+  // Workday button dropdown (aria-haspopup="listbox") — phone-device-type, countryRegion, etc.
+  const dropdownBtn = container.querySelector<HTMLElement>('button[aria-haspopup="listbox"]')
+  if (dropdownBtn) {
+    return {
+      label,
+      type: 'dropdown',
+      automationId: autoId, // always container ID
+      ariaLabel: dropdownBtn.getAttribute('aria-label'),
+      placeholder: null,
+      options: null,
+      required: container.querySelector('[aria-required="true"]') !== null,
+      currentValue: dropdownBtn.textContent?.trim() || null,
+    }
+  }
+
   // Text input
   const input = container.querySelector<HTMLInputElement>(
     'input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"])',
@@ -168,7 +240,7 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
     return {
       label,
       type: inputType === 'date' ? 'date' : 'text',
-      automationId: input.getAttribute('data-automation-id') ?? autoId,
+      automationId: autoId, // always container ID — filler drills into it
       ariaLabel: input.getAttribute('aria-label'),
       placeholder: input.placeholder || null,
       options: null,
@@ -183,7 +255,7 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
     return {
       label,
       type: 'textarea',
-      automationId: textarea.getAttribute('data-automation-id') ?? autoId,
+      automationId: autoId, // always container ID
       ariaLabel: textarea.getAttribute('aria-label'),
       placeholder: textarea.placeholder || null,
       options: null,
@@ -218,22 +290,7 @@ export function scanFormFields(): FieldDescriptor[] {
   const root = findActiveSection()
 
   // Get all formField containers within the active section
-  const allContainers = Array.from(root.querySelectorAll<Element>(WORKDAY_FIELD_CONTAINER))
-
-  // If smartDividers exist inside root, only take fields before the first one
-  // (Workday uses smartDividers to separate logical groups on the same page)
-  const firstDivider = root.querySelector('[data-automation-id="smartDivider"]')
-  const containers = firstDivider
-    ? allContainers.filter((c) => {
-        // Keep container if it comes before the first smartDivider in DOM order
-        const pos = firstDivider.compareDocumentPosition(c)
-        // DOCUMENT_POSITION_PRECEDING = 2
-        return !!(pos & Node.DOCUMENT_POSITION_PRECEDING)
-      })
-    : allContainers
-
-  // Fallback: if filtering leaves nothing, use all containers
-  const finalContainers = containers.length > 0 ? containers : allContainers
+  const finalContainers = Array.from(root.querySelectorAll<Element>(WORKDAY_FIELD_CONTAINER))
 
   for (const container of finalContainers) {
     const autoId = container.getAttribute('data-automation-id') ?? ''
