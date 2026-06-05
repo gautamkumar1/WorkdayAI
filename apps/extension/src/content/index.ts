@@ -36,11 +36,33 @@ async function handleContentMessage(message: ContentMessage): Promise<unknown> {
     case 'SCAN_FIELDS': {
       await waitForPageReady()
       const fields = scanFormFields()
+      console.log(
+        '[WAI] SCAN_FIELDS result:',
+        fields.map((f) => ({
+          label: f.label,
+          type: f.type,
+          automationId: f.automationId,
+          options: f.options,
+          currentValue: f.currentValue,
+        })),
+      )
       return { fields }
     }
 
     case 'EXECUTE_FILL': {
+      console.log(
+        '[WAI] EXECUTE_FILL mappings:',
+        message.mappings.map((m) => ({
+          label: m.fieldLabel,
+          type: m.fieldType,
+          value: m.value,
+          confidence: m.confidence,
+          automationId: m.automationId,
+          needsReview: m.needsReview,
+        })),
+      )
       const results: FillResult[] = await executeFillPlan(message.mappings, message.delayMs)
+      console.log('[WAI] EXECUTE_FILL results:', results)
       return { results }
     }
 

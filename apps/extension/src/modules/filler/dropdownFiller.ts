@@ -77,6 +77,11 @@ async function isButtonListboxOpen(btn: HTMLElement): Promise<boolean> {
 }
 
 async function fillButtonListbox(btn: HTMLElement, value: string): Promise<boolean> {
+  console.log('[WAI] fillButtonListbox: start', {
+    btnId: btn.id,
+    btnName: btn.getAttribute('name'),
+    value,
+  })
   btn.scrollIntoView({ block: 'center' })
   await wait(200)
   btn.focus()
@@ -85,6 +90,7 @@ async function fillButtonListbox(btn: HTMLElement, value: string): Promise<boole
   // If a different listbox is open, close it first
   const otherOpen = findOpenListbox()
   if (otherOpen && !(await isButtonListboxOpen(btn))) {
+    console.log('[WAI] fillButtonListbox: closing other open listbox first')
     document.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
     )
@@ -93,6 +99,7 @@ async function fillButtonListbox(btn: HTMLElement, value: string): Promise<boole
 
   // Only click to open if not already open — btn.click() toggles, so clicking an open dropdown closes it
   const wasOpen = await isButtonListboxOpen(btn)
+  console.log('[WAI] fillButtonListbox: wasOpen=', wasOpen)
   if (!wasOpen) {
     btn.click()
     await wait(500)
@@ -109,16 +116,34 @@ async function fillButtonListbox(btn: HTMLElement, value: string): Promise<boole
     }
   }
 
+  console.log('[WAI] fillButtonListbox: listbox found=', !!listbox, listbox?.id)
   if (!listbox) return false
 
   // Prefer the listbox specifically controlled by this button over any other open listbox
   const controlsId = btn.getAttribute('aria-controls')
   if (controlsId) {
     const controlled = document.getElementById(controlsId) as HTMLElement | null
-    if (controlled) listbox = controlled
+    if (controlled) {
+      console.log('[WAI] fillButtonListbox: using aria-controls listbox id=', controlsId)
+      listbox = controlled
+    }
   }
 
+  const availableOptions = Array.from(listbox.querySelectorAll('[role="option"]')).map((o) =>
+    o.textContent?.trim(),
+  )
+  console.log(
+    '[WAI] fillButtonListbox: available options=',
+    availableOptions,
+    'looking for=',
+    value,
+  )
+
   const option = findOptionInListbox(listbox, value)
+  console.log(
+    '[WAI] fillButtonListbox: matched option=',
+    option?.textContent?.trim() ?? 'NOT FOUND',
+  )
   if (!option) {
     btn.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
@@ -281,13 +306,22 @@ async function fillInlineListbox(listbox: HTMLElement, value: string): Promise<b
 }
 
 export async function fillDropdown(element: HTMLElement, value: string): Promise<boolean> {
+  console.log(
+    '[WAI] fillDropdown: element=',
+    element.getAttribute('data-automation-id') ?? element.id ?? element.tagName,
+    'value=',
+    value,
+  )
+
   // 1. Element is directly a native <select>
   if (element instanceof HTMLSelectElement) {
+    console.log('[WAI] fillDropdown: path=nativeSelect')
     return fillNativeSelect(element, value)
   }
 
   // 2. Element is directly the inline listbox (Application Questions pattern)
   if (element.getAttribute('role') === 'listbox') {
+    console.log('[WAI] fillDropdown: path=inlineListbox')
     return fillInlineListbox(element, value)
   }
 
@@ -300,6 +334,7 @@ export async function fillDropdown(element: HTMLElement, value: string): Promise
     const isVisible =
       style.display !== 'none' && style.visibility !== 'hidden' && innerSelect.offsetParent !== null
     if (isVisible) {
+      console.log('[WAI] fillDropdown: path=visibleInnerSelect')
       return fillNativeSelect(innerSelect, value)
     }
   }
@@ -309,6 +344,7 @@ export async function fillDropdown(element: HTMLElement, value: string): Promise
     '[data-automation-id="multiselectInputContainer"]',
   )
   if (multiselectInput) {
+    console.log('[WAI] fillDropdown: path=multiselectChevron')
     return fillMultiselectChevron(element, value)
   }
 
@@ -316,6 +352,7 @@ export async function fillDropdown(element: HTMLElement, value: string): Promise
   // These dropdowns have options always present in the DOM — no button needed to open them.
   const inlineListbox = element.querySelector<HTMLElement>('ul[role="listbox"], [role="listbox"]')
   if (inlineListbox) {
+    console.log('[WAI] fillDropdown: path=inlineListboxInContainer', inlineListbox.id)
     return fillInlineListbox(inlineListbox, value)
   }
 
@@ -324,8 +361,10 @@ export async function fillDropdown(element: HTMLElement, value: string): Promise
     element.querySelector<HTMLElement>('button[aria-haspopup="listbox"]') ??
     element.querySelector<HTMLElement>('button')
   if (btn) {
+    console.log('[WAI] fillDropdown: path=buttonListbox', btn.id || btn.getAttribute('name'))
     return fillButtonListbox(btn, value)
   }
 
+  console.log('[WAI] fillDropdown: NO PATH MATCHED for element', element.outerHTML.slice(0, 200))
   return false
 }

@@ -103,15 +103,20 @@ async function executeOnce(mapping: FieldMapping): Promise<void> {
         await fillRadio(mapping.automationId ?? mapping.fieldLabel, mapping.value)
         break
       case 'checkbox': {
-        const checkbox = container.querySelector<HTMLInputElement>('input[type="checkbox"]')
-        if (checkbox) {
-          await fillCheckbox(checkbox, mapping.value === 'true')
+        // container may BE the checkbox itself (standalone checkboxes outside formField-*)
+        if (container instanceof HTMLInputElement && container.type === 'checkbox') {
+          await fillCheckbox(container, mapping.value === 'true')
         } else {
-          // Workday renders some checkboxes as div[role="checkbox"]
-          const ariaBox = container.querySelector<HTMLElement>('[role="checkbox"]')
-          if (!ariaBox) throw new Error(`No checkbox found for: ${mapping.fieldLabel}`)
-          const isChecked = ariaBox.getAttribute('aria-checked') === 'true'
-          if (isChecked !== (mapping.value === 'true')) ariaBox.click()
+          const checkbox = container.querySelector<HTMLInputElement>('input[type="checkbox"]')
+          if (checkbox) {
+            await fillCheckbox(checkbox, mapping.value === 'true')
+          } else {
+            // Workday renders some checkboxes as div[role="checkbox"]
+            const ariaBox = container.querySelector<HTMLElement>('[role="checkbox"]')
+            if (!ariaBox) throw new Error(`No checkbox found for: ${mapping.fieldLabel}`)
+            const isChecked = ariaBox.getAttribute('aria-checked') === 'true'
+            if (isChecked !== (mapping.value === 'true')) ariaBox.click()
+          }
         }
         break
       }

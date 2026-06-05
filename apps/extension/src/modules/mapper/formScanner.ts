@@ -15,6 +15,101 @@ const SKIP_AUTOMATION_IDS = new Set([
   'applyFlowPage',
 ])
 
+// Known automation ID → canonical human label.
+// Checked FIRST in getLabelText so it overrides misleading DOM labels
+// (e.g. formField-gender has a <label> "Please Select One", not "Gender").
+// Two naming conventions exist across tenants:
+//   1. underscore:   formField-legalNameSection_firstName  (most common, confirmed)
+//   2. double-dash:  formField-legalName--firstName        (older tenants)
+const KNOWN_LABELS: Record<string, string> = {
+  'formField-source': 'How Did You Hear About Us?',
+  'formField-referral': 'How Did You Hear About Us?',
+  'formField-candidateIsPreviousWorker': 'Have you previously worked for this company?',
+  'formField-previousWorker': 'Have you previously worked for this company?',
+  'formField-country': 'Country',
+  // Legal Name — underscore convention (confirmed real)
+  'formField-legalNameSection_firstName': 'Given Name(s)',
+  'formField-legalNameSection_lastName': 'Family Name',
+  'formField-legalNameSection_firstNameLocal': 'Local Given Name(s)',
+  'formField-legalNameSection_lastNameLocal': 'Local Family Name',
+  'formField-legalNameSection_preferredName': 'I have a preferred name',
+  // Legal Name — double-dash convention (older tenants)
+  'formField-legalName--firstName': 'Given Name(s)',
+  'formField-legalName--givenName': 'Given Name(s)',
+  'formField-legalName--lastName': 'Family Name',
+  'formField-legalName--familyName': 'Family Name',
+  'formField-legalName--firstNameLocal': 'Local Given Name(s)',
+  'formField-legalName--givenNameLocal': 'Local Given Name(s)',
+  'formField-legalName--lastNameLocal': 'Local Family Name',
+  'formField-legalName--familyNameLocal': 'Local Family Name',
+  // Other name variants
+  'formField-givenName': 'Given Name(s)',
+  'formField-firstName': 'Given Name(s)',
+  'formField-familyName': 'Family Name',
+  'formField-lastName': 'Family Name',
+  // Address — underscore convention (confirmed real)
+  'formField-addressSection_addressLine1': 'Address Line 1',
+  'formField-addressSection_addressLine2': 'Address Line 2',
+  'formField-addressSection_city': 'City',
+  'formField-addressSection_postalCode': 'Postal Code',
+  'formField-addressSection_countryRegion': 'State',
+  // Address — flat convention
+  'formField-addressLine1': 'Address Line 1',
+  'formField-addressLine2': 'Address Line 2',
+  'formField-city': 'City',
+  'formField-postalCode': 'Postal Code',
+  'formField-countryRegion': 'State',
+  'formField-stateProvince': 'State',
+  // Phone — confirmed real IDs from ubangura repo
+  'formField-phone-device-type': 'Phone Device Type',
+  'formField-phone-number': 'Phone Number',
+  'formField-phone': 'Phone Number',
+  // Phone — alternate conventions
+  'formField-phoneType': 'Phone Device Type',
+  'formField-countryPhoneCode': 'Country Phone Code',
+  'formField-phoneNumber': 'Phone Number',
+  'formField-extension': 'Phone Extension',
+  'formField-phone-extension': 'Phone Extension',
+  // Preferred name checkbox
+  'formField-preferredCheck': 'I have a preferred name',
+  'formField-usePreferredName': 'I have a preferred name',
+  // Email
+  'formField-email': 'Email Address',
+  // My Experience — Education (confirmed real IDs from NVIDIA Workday)
+  'formField-schoolName': 'School',
+  'formField-schoolItem': 'School',
+  'formField-degree': 'Degree',
+  'formField-fieldOfStudy': 'Field of Study',
+  'formField-field-of-study': 'Field of Study',
+  'formField-gradeAverage': 'GPA',
+  'formField-firstYearAttended': 'Start Year',
+  'formField-lastYearAttended': 'End Year',
+  // My Experience — Work
+  'formField-jobTitle': 'Job Title',
+  'formField-company': 'Company',
+  'formField-location': 'Location',
+  'formField-startDate': 'Start Date',
+  'formField-endDate': 'End Date',
+  'formField-description': 'Description',
+  // My Experience — Links (confirmed real IDs from NVIDIA Workday)
+  'formField-linkedInAccount': 'LinkedIn Profile',
+  'formField-linkedinQuestion': 'LinkedIn Profile',
+  'formField-websiteUrl': 'Website URL',
+  // Skills
+  'formField-skills': 'Skills',
+  'formField-skillsPrompt': 'Skills',
+  // Voluntary Disclosures — confirmed real IDs from NVIDIA Workday
+  'formField-gender': 'Gender',
+  'formField-acceptTermsAndAgreements': 'Terms and Conditions Agreement',
+}
+
+// Known static options for button+listbox dropdowns whose listbox is a DOM portal
+// (rendered outside the formField-* container, so options aren't readable at scan time).
+// Keyed by data-automation-id of the formField-* container.
+const KNOWN_OPTIONS: Record<string, string[]> = {
+  'formField-gender': ['Decline to State', 'Female', 'Male'],
+}
+
 // Known Workday page-section automation IDs — confirmed from multiple Workday tenants
 const PAGE_SECTION_IDS = [
   'applyFlowMyInfoPage',
@@ -33,6 +128,11 @@ const PAGE_SECTION_IDS = [
 ]
 
 function getLabelText(container: Element): string {
+  // Strategy 0: known automation ID → canonical label (checked first to override misleading DOM labels)
+  // e.g. formField-gender has a <label> that says "Please Select One" (placeholder text), not "Gender"
+  const autoIdEarly = container.getAttribute('data-automation-id') ?? ''
+  if (KNOWN_LABELS[autoIdEarly]) return KNOWN_LABELS[autoIdEarly]!
+
   // Strategy 1a: fieldset > legend > label (used by date fields like firstYearAttended)
   const legendLabel = container.querySelector('fieldset > legend > label, legend label')
   if (legendLabel) {
@@ -79,92 +179,6 @@ function getLabelText(container: Element): string {
       if (text.length > 0 && text.length < 200) return text
     }
   }
-
-  // Strategy 4: known Workday automation ID → human label mapping
-  const autoId = container.getAttribute('data-automation-id') ?? ''
-  // Real Workday automation IDs confirmed from ubangura/Workday-Application-Automator
-  // and WeKruit/Hand-X toy fixture. Two naming conventions exist across tenants:
-  //   1. underscore:   formField-legalNameSection_firstName  (most common, confirmed)
-  //   2. double-dash:  formField-legalName--firstName        (older tenants)
-  const KNOWN_LABELS: Record<string, string> = {
-    'formField-source': 'How Did You Hear About Us?',
-    'formField-referral': 'How Did You Hear About Us?',
-    'formField-candidateIsPreviousWorker': 'Have you previously worked for this company?',
-    'formField-previousWorker': 'Have you previously worked for this company?',
-    'formField-country': 'Country',
-    // Legal Name — underscore convention (confirmed real)
-    'formField-legalNameSection_firstName': 'Given Name(s)',
-    'formField-legalNameSection_lastName': 'Family Name',
-    'formField-legalNameSection_firstNameLocal': 'Local Given Name(s)',
-    'formField-legalNameSection_lastNameLocal': 'Local Family Name',
-    'formField-legalNameSection_preferredName': 'I have a preferred name',
-    // Legal Name — double-dash convention (older tenants)
-    'formField-legalName--firstName': 'Given Name(s)',
-    'formField-legalName--givenName': 'Given Name(s)',
-    'formField-legalName--lastName': 'Family Name',
-    'formField-legalName--familyName': 'Family Name',
-    'formField-legalName--firstNameLocal': 'Local Given Name(s)',
-    'formField-legalName--givenNameLocal': 'Local Given Name(s)',
-    'formField-legalName--lastNameLocal': 'Local Family Name',
-    'formField-legalName--familyNameLocal': 'Local Family Name',
-    // Other name variants
-    'formField-givenName': 'Given Name(s)',
-    'formField-firstName': 'Given Name(s)',
-    'formField-familyName': 'Family Name',
-    'formField-lastName': 'Family Name',
-    // Address — underscore convention (confirmed real)
-    'formField-addressSection_addressLine1': 'Address Line 1',
-    'formField-addressSection_addressLine2': 'Address Line 2',
-    'formField-addressSection_city': 'City',
-    'formField-addressSection_postalCode': 'Postal Code',
-    'formField-addressSection_countryRegion': 'State',
-    // Address — flat convention
-    'formField-addressLine1': 'Address Line 1',
-    'formField-addressLine2': 'Address Line 2',
-    'formField-city': 'City',
-    'formField-postalCode': 'Postal Code',
-    'formField-countryRegion': 'State',
-    'formField-stateProvince': 'State',
-    // Phone — confirmed real IDs from ubangura repo
-    'formField-phone-device-type': 'Phone Device Type',
-    'formField-phone-number': 'Phone Number',
-    'formField-phone': 'Phone Number',
-    // Phone — alternate conventions
-    'formField-phoneType': 'Phone Device Type',
-    'formField-countryPhoneCode': 'Country Phone Code',
-    'formField-phoneNumber': 'Phone Number',
-    'formField-extension': 'Phone Extension',
-    'formField-phone-extension': 'Phone Extension',
-    // Preferred name checkbox
-    'formField-preferredCheck': 'I have a preferred name',
-    'formField-usePreferredName': 'I have a preferred name',
-    // Email
-    'formField-email': 'Email Address',
-    // My Experience — Education (confirmed real IDs from NVIDIA Workday)
-    'formField-schoolName': 'School',
-    'formField-schoolItem': 'School',
-    'formField-degree': 'Degree',
-    'formField-fieldOfStudy': 'Field of Study',
-    'formField-field-of-study': 'Field of Study',
-    'formField-gradeAverage': 'GPA',
-    'formField-firstYearAttended': 'Start Year',
-    'formField-lastYearAttended': 'End Year',
-    // My Experience — Work
-    'formField-jobTitle': 'Job Title',
-    'formField-company': 'Company',
-    'formField-location': 'Location',
-    'formField-startDate': 'Start Date',
-    'formField-endDate': 'End Date',
-    'formField-description': 'Description',
-    // My Experience — Links (confirmed real IDs from NVIDIA Workday)
-    'formField-linkedInAccount': 'LinkedIn Profile',
-    'formField-linkedinQuestion': 'LinkedIn Profile',
-    'formField-websiteUrl': 'Website URL',
-    // Skills
-    'formField-skills': 'Skills',
-    'formField-skillsPrompt': 'Skills',
-  }
-  if (KNOWN_LABELS[autoId]) return KNOWN_LABELS[autoId]!
 
   return ''
 }
@@ -262,15 +276,30 @@ function getFieldDescriptorFromContainer(container: Element): FieldDescriptor | 
       `button[data-automation-id="${autoId.replace('formField-', '')}"]`,
     )
   if (dropdownBtn) {
+    // Try to read options from the portal listbox via aria-controls before falling back to KNOWN_OPTIONS.
+    // The listbox is a DOM portal outside this container, so container.querySelector won't find it.
+    const controlsId = dropdownBtn.getAttribute('aria-controls')
+    const portalListbox = controlsId ? document.getElementById(controlsId) : null
+    const portalOptions = portalListbox
+      ? Array.from(portalListbox.querySelectorAll<HTMLElement>('[role="option"]'))
+          .filter(
+            (o) =>
+              o.getAttribute('aria-disabled') !== 'true' &&
+              o.textContent?.trim().toLowerCase() !== 'select one',
+          )
+          .map((o) => o.textContent?.trim() ?? '')
+          .filter(Boolean)
+      : null
+    const currentVal = dropdownBtn.textContent?.trim()
     return {
       label,
       type: 'dropdown',
-      automationId: autoId, // always container ID
+      automationId: autoId,
       ariaLabel: dropdownBtn.getAttribute('aria-label'),
       placeholder: null,
-      options: null,
+      options: portalOptions?.length ? portalOptions : (KNOWN_OPTIONS[autoId] ?? null),
       required: container.querySelector('[aria-required="true"]') !== null,
-      currentValue: dropdownBtn.textContent?.trim() || null,
+      currentValue: currentVal && currentVal.toLowerCase() !== 'select one' ? currentVal : null,
     }
   }
 
@@ -437,6 +466,57 @@ function scanInlineListboxFields(): FieldDescriptor[] {
   return results
 }
 
+// Scan standalone checkboxes that live outside formField-* containers.
+// Workday's Terms & Conditions and Applicant Privacy Policy checkbox follows this pattern:
+//   <input id="termsAndConditions--acceptTermsAndAgreements" type="checkbox" aria-required="true">
+// It has no wrapping formField-* container, so the main scan misses it entirely.
+function scanStandaloneCheckboxes(): FieldDescriptor[] {
+  const results: FieldDescriptor[] = []
+  const checkboxes = Array.from(
+    document.body.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+  )
+  for (const cb of checkboxes) {
+    // Skip checkboxes already inside a formField-* container (handled by main scan)
+    if (cb.closest('[data-automation-id^="formField-"]')) continue
+
+    const style = window.getComputedStyle(cb)
+    if (style.display === 'none' || style.visibility === 'hidden') continue
+
+    // Derive label from: associated <label>, aria-label, or nearest preceding text sibling
+    let labelText =
+      (cb.id
+        ? document.querySelector<HTMLLabelElement>(`label[for="${cb.id}"]`)?.textContent
+        : '') ??
+      cb.getAttribute('aria-label') ??
+      ''
+    if (!labelText) {
+      // Walk up to find a preceding sibling or parent text that describes this checkbox
+      let cur: Element | null = cb.parentElement
+      for (let depth = 0; depth < 5 && cur && cur !== document.body; depth++) {
+        const text = cur.textContent?.replace(/\*/g, '').trim() ?? ''
+        if (text.length > 5 && text.length < 400) {
+          labelText = text
+          break
+        }
+        cur = cur.parentElement
+      }
+    }
+    if (!labelText) labelText = cb.id || cb.name || 'Terms and Conditions'
+
+    results.push({
+      label: labelText.replace(/\*/g, '').trim(),
+      type: 'checkbox',
+      automationId: cb.id || cb.name || null,
+      ariaLabel: cb.getAttribute('aria-label'),
+      placeholder: null,
+      options: null,
+      required: cb.getAttribute('aria-required') === 'true' || cb.required,
+      currentValue: cb.checked ? 'true' : 'false',
+    })
+  }
+  return results
+}
+
 export function scanFormFields(): FieldDescriptor[] {
   const results: FieldDescriptor[] = []
   const root = findActiveSection()
@@ -460,6 +540,9 @@ export function scanFormFields(): FieldDescriptor[] {
   // Also scan inline listbox fields that live outside formField-* containers
   // (Application Questions page pattern — always searches document.body)
   results.push(...scanInlineListboxFields())
+
+  // Scan standalone checkboxes (e.g. Terms & Conditions) outside formField-* containers
+  results.push(...scanStandaloneCheckboxes())
 
   return results
 }

@@ -58,6 +58,8 @@ Smart defaults (use when data is absent but answer is logically inferable):
 - "LinkedIn Profile" or "LinkedIn URL" → use links.linkedin exactly as-is; if not a valid https://linkedin.com URL return value="" with confidence=0
 - "Skills" → join skills array with comma, confidence=0.9
 - "Email Address" field → use email from resume with confidence=0.99
+- "Gender" → if options are provided pick the closest match; if no gender in resume default to "Male" with confidence=0.7; value MUST be one of the provided options exactly (e.g. "Male", "Female", "Decline to State")
+- "Terms and Conditions Agreement" or any field about accepting terms/privacy policy → ALWAYS return value="true" with confidence=0.99 (required to proceed)
 
 Address parsing rules (the resume location field is a single string like "Mumbai, Maharashtra, India"):
 - "City" → extract the city portion from location (first segment before comma). confidence=0.85
