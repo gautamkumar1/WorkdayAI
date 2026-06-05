@@ -14,8 +14,10 @@ type ContentMessage =
   | { type: 'WAIT_READY' }
   | { type: 'AUTO_ADVANCE' }
   | { type: 'WAIT_FOR_LOGIN' }
+  | { type: 'UPLOAD_RESUME'; fileName: string; mimeType: string; base64: string }
   | { type: 'DEBUG_SCAN' }
   | { type: 'DEBUG_DROPDOWN' }
+  | { type: 'DEBUG_DEGREE' }
 
 let cleanupMutationWatcher: (() => void) | null = null
 
@@ -60,6 +62,20 @@ async function handleContentMessage(message: ContentMessage): Promise<unknown> {
     case 'WAIT_FOR_LOGIN': {
       await waitForLoginCompletion()
       return { done: true }
+    }
+
+    case 'UPLOAD_RESUME': {
+      const input = document.querySelector<HTMLInputElement>(
+        'input[data-automation-id="file-upload-input-ref"]',
+      )
+      if (!input) return { success: false, error: 'file input not found' }
+      const bytes = Uint8Array.from(atob(message.base64), (c) => c.charCodeAt(0))
+      const file = new File([bytes], message.fileName, { type: message.mimeType })
+      const dt = new DataTransfer()
+      dt.items.add(file)
+      input.files = dt.files
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      return { success: true }
     }
 
     case 'DEBUG_DROPDOWN': {
@@ -120,6 +136,88 @@ async function handleContentMessage(message: ContentMessage): Promise<unknown> {
         options: allVisible,
         popupHtml: popupHtml.slice(0, 2000),
         allIds: allIds.slice(0, 50),
+      }
+    }
+
+    case 'DEBUG_DEGREE': {
+      // Find the degree container and dump its full DOM + what happens when opened
+      const degreeContainer =
+        document.querySelector<HTMLElement>('[data-automation-id="formField-degree"]') ??
+        document.querySelector<HTMLElement>('[data-automation-id*="degree"]')
+
+      if (!degreeContainer) {
+        return {
+          error: 'degree container not found',
+          allFormFields: Array.from(
+            document.querySelectorAll('[data-automation-id^="formField-"]'),
+          ).map((e) => e.getAttribute('data-automation-id')),
+        }
+      }
+
+      const containerHtml = degreeContainer.outerHTML.slice(0, 3000)
+
+      // Check inner select
+      const innerSelect = degreeContainer.querySelector('select')
+      const selectInfo = innerSelect
+        ? {
+            exists: true,
+            display: window.getComputedStyle(innerSelect).display,
+            visibility: window.getComputedStyle(innerSelect).visibility,
+            offsetParent: innerSelect.offsetParent !== null,
+            optionCount: innerSelect.options.length,
+            options: Array.from(innerSelect.options).map((o) => ({ value: o.value, text: o.text })),
+          }
+        : { exists: false }
+
+      // Check button
+      const btn =
+        degreeContainer.querySelector<HTMLElement>('button[aria-haspopup="listbox"]') ??
+        degreeContainer.querySelector<HTMLElement>('button[aria-haspopup="true"]') ??
+        degreeContainer.querySelector<HTMLElement>('button')
+      const btnInfo = btn
+        ? {
+            exists: true,
+            ariaHasPopup: btn.getAttribute('aria-haspopup'),
+            ariaExpanded: btn.getAttribute('aria-expanded'),
+            automationId: btn.getAttribute('data-automation-id'),
+            text: btn.textContent?.trim(),
+          }
+        : { exists: false }
+
+      // Click the button and wait to see listbox
+      if (btn) {
+        btn.scrollIntoView({ block: 'center' })
+        await new Promise((r) => setTimeout(r, 200))
+        btn.focus()
+        await new Promise((r) => setTimeout(r, 100))
+        btn.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }),
+        )
+        await new Promise((r) => setTimeout(r, 800))
+      }
+
+      // Now dump everything that appeared
+      const listboxes = Array.from(document.querySelectorAll('[role="listbox"]')).map((el) => ({
+        aid: el.getAttribute('data-automation-id'),
+        visibility: window.getComputedStyle(el as HTMLElement).visibility,
+        display: window.getComputedStyle(el as HTMLElement).display,
+        optionCount: el.querySelectorAll('[role="option"]').length,
+        options: Array.from(el.querySelectorAll('[role="option"]'))
+          .slice(0, 10)
+          .map((o) => o.textContent?.trim()),
+        html: el.outerHTML.slice(0, 500),
+      }))
+
+      const visibilityOpened = document
+        .querySelector('[visibility="opened"]')
+        ?.outerHTML?.slice(0, 500)
+
+      return {
+        containerHtml,
+        selectInfo,
+        btnInfo,
+        listboxes,
+        visibilityOpened: visibilityOpened ?? 'none',
       }
     }
 

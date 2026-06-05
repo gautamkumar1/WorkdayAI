@@ -48,6 +48,15 @@ Smart defaults (use when data is absent but answer is logically inferable):
 - "Phone Device Type" → default "Home" with confidence=0.9
 - "How Did You Hear About Us?" → if options are provided pick "Internet Search" or the closest match; if no options return "Internet Search" with confidence=0.8
 - "Phone Extension" → default "" (empty string) with confidence=0.95 — never leave as needsReview
+- "Degree" → map from education[0].degree; if options are provided you MUST pick the closest matching option from the list exactly as written; common Workday option mappings: "B.Tech"/"BE"/"Bachelor of Technology"/"Bachelor of Engineering" → "BTECH", "M.Tech"/"ME"/"Master of Technology" → "MTECH", "Bachelor"/"BS"/"BA"/"B.Sc" → "Bachelors", "Master"/"MS"/"MA"/"M.Sc" → "Masters", "MBA" → "MBA", "PhD"/"Doctorate" → "PhD" or "Doctorate"; for Indian resumes default to "BTECH" if unclear with confidence=0.75; NEVER return a degree string that is not in the options list
+- "School" or "Institution" → map from education[0].institution with confidence=0.9
+- "Field of Study" → map from education[0].field with confidence=0.85
+- "GPA" → map from education[0].gpa if present, else omit
+- "Job Title" → map from experience[0].title with confidence=0.95
+- "Company" → map from experience[0].company with confidence=0.95
+- "Description" → map from experience[0].description, truncate to 2000 chars
+- "LinkedIn Profile" or "LinkedIn URL" → use links.linkedin exactly as-is; if not a valid https://linkedin.com URL return value="" with confidence=0
+- "Skills" → join skills array with comma, confidence=0.9
 - "Email Address" field → use email from resume with confidence=0.99
 
 Address parsing rules (the resume location field is a single string like "Mumbai, Maharashtra, India"):

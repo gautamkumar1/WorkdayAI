@@ -2,65 +2,127 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-// Wait for a NEW [role="listbox"] that wasn't present before clicking.
-// Proven pattern from aRustyDev/forge workday plugin.
-function waitForNewListbox(
-  existingListboxes: Set<Element>,
-  timeoutMs = 3000,
-): Promise<HTMLElement | null> {
-  return new Promise((resolve) => {
-    const find = (): HTMLElement | null => {
-      for (const el of Array.from(document.querySelectorAll<HTMLElement>('[role="listbox"]'))) {
-        if (!existingListboxes.has(el)) return el
-      }
-      return null
-    }
-    const found = find()
-    if (found) {
-      resolve(found)
-      return
-    }
-    const start = Date.now()
-    const id = setInterval(() => {
-      const el = find()
-      if (el) {
-        clearInterval(id)
-        resolve(el)
-        return
-      }
-      if (Date.now() - start > timeoutMs) {
-        clearInterval(id)
-        resolve(null)
-      }
-    }, 50)
-  })
+// Normalize degree-style values for fuzzy matching:
+// "B.Tech in Computer Technology" → "btech", "bachelor of science" → "bachelors", etc.
+function normalizeDegree(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\bin\b.*/g, '') // strip "in <subject>"
+    .replace(/[^a-z0-9]/g, '') // strip punctuation/spaces
+    .replace(/^bachelor.*/, 'bachelors')
+    .replace(/^master.*/, 'masters')
+    .replace(/^btech.*|^be$|^beng.*/, 'btech')
+    .replace(/^mtech.*|^me$|^meng.*/, 'mtech')
+    .replace(/^phd.*|^doctorate.*/, 'phd')
+    .trim()
 }
 
 function findOptionInListbox(listbox: HTMLElement, value: string): HTMLElement | null {
   const lower = value.toLowerCase().trim()
-  const options = Array.from(listbox.querySelectorAll<HTMLElement>('[role="option"]'))
+  // Exclude disabled placeholder options like "Select One"
+  const options = Array.from(listbox.querySelectorAll<HTMLElement>('[role="option"]')).filter(
+    (o) =>
+      o.getAttribute('aria-disabled') !== 'true' &&
+      o.textContent?.trim().toLowerCase() !== 'select one',
+  )
+  // 1. Exact match
   for (const o of options) {
     if (o.textContent?.trim().toLowerCase() === lower) return o
   }
+  // 2. Starts-with match
   for (const o of options) {
     if (o.textContent?.trim().toLowerCase().startsWith(lower)) return o
   }
+  // 3. Contains match
   for (const o of options) {
     if (o.textContent?.trim().toLowerCase().includes(lower)) return o
+  }
+  // 4. Normalized degree match (handles "B.Tech in Computer Technology" → "BTECH")
+  const normValue = normalizeDegree(value)
+  for (const o of options) {
+    if (normalizeDegree(o.textContent ?? '') === normValue) return o
   }
   return null
 }
 
-// Fill button+listbox dropdown (phoneType, countryRegion, country).
-// Pattern: snapshot listboxes → click button → wait for NEW listbox → click option.
+// Fill button+listbox dropdown (phoneType, countryRegion, degree, etc.)
+// Workday uses two patterns — we handle both:
+//   A. Options in a listbox that is already in the DOM and populated (toy fixture)
+//   B. Listbox appears as a new element OR gets populated after click (real Workday)
+function findOpenListbox(): HTMLElement | null {
+  // Workday renders the listbox portal outside the container.
+  // When open, the wrapper div has visibility="opened" (confirmed from real DOM inspection).
+  const byVisibility = document.querySelector<HTMLElement>('[visibility="opened"] [role="listbox"]')
+  if (byVisibility) return byVisibility
+  // Fallback: any visible listbox with real options
+  for (const el of Array.from(document.querySelectorAll<HTMLElement>('[role="listbox"]'))) {
+    const r = el.getBoundingClientRect()
+    if (r.width > 0 && r.height > 0 && el.querySelectorAll('[role="option"]').length >= 1) return el
+  }
+  return null
+}
+
+async function isButtonListboxOpen(btn: HTMLElement): Promise<boolean> {
+  // Check aria-expanded, then fall back to looking for a visible listbox controlled by this button
+  if (btn.getAttribute('aria-expanded') === 'true') return true
+  const controlsId = btn.getAttribute('aria-controls')
+  if (controlsId) {
+    const controlled = document.getElementById(controlsId)
+    if (controlled) {
+      const r = controlled.getBoundingClientRect()
+      return r.width > 0 && r.height > 0
+    }
+  }
+  return false
+}
+
 async function fillButtonListbox(btn: HTMLElement, value: string): Promise<boolean> {
-  const existingListboxes = new Set(Array.from(document.querySelectorAll('[role="listbox"]')))
-  btn.click()
-  const listbox = await waitForNewListbox(existingListboxes, 3000)
+  btn.scrollIntoView({ block: 'center' })
+  await wait(200)
+  btn.focus()
+  await wait(100)
+
+  // If a different listbox is open, close it first
+  const otherOpen = findOpenListbox()
+  if (otherOpen && !(await isButtonListboxOpen(btn))) {
+    document.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    )
+    await wait(300)
+  }
+
+  // Only click to open if not already open — btn.click() toggles, so clicking an open dropdown closes it
+  const wasOpen = await isButtonListboxOpen(btn)
+  if (!wasOpen) {
+    btn.click()
+    await wait(500)
+  }
+
+  // Wait up to 2s for the listbox to appear
+  let listbox = findOpenListbox()
+  if (!listbox) {
+    const deadline = Date.now() + 2000
+    while (Date.now() < deadline) {
+      listbox = findOpenListbox()
+      if (listbox) break
+      await wait(100)
+    }
+  }
+
   if (!listbox) return false
+
+  // Prefer the listbox specifically controlled by this button over any other open listbox
+  const controlsId = btn.getAttribute('aria-controls')
+  if (controlsId) {
+    const controlled = document.getElementById(controlsId) as HTMLElement | null
+    if (controlled) listbox = controlled
+  }
+
   const option = findOptionInListbox(listbox, value)
   if (!option) {
-    btn.click() // close
+    btn.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }),
+    )
     return false
   }
   option.click()
@@ -174,28 +236,60 @@ async function fillMultiselectChevron(container: HTMLElement, value: string): Pr
   return false
 }
 
+function fillNativeSelect(select: HTMLSelectElement, value: string): boolean {
+  const lower = value.toLowerCase()
+  let matchIndex = -1
+  // Exact match
+  for (let i = 0; i < select.options.length; i++) {
+    if (select.options[i]!.text.toLowerCase() === lower) {
+      matchIndex = i
+      break
+    }
+  }
+  // Partial match
+  if (matchIndex === -1) {
+    for (let i = 0; i < select.options.length; i++) {
+      if (select.options[i]!.text.toLowerCase().includes(lower)) {
+        matchIndex = i
+        break
+      }
+    }
+  }
+  if (matchIndex === -1) return false
+
+  // Use the React nativeInputValueSetter so React's synthetic onChange fires correctly.
+  // Setting .selectedIndex directly bypasses React's internal state tracking.
+  const nativeSetter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set
+  if (nativeSetter) {
+    nativeSetter.call(select, select.options[matchIndex]!.value)
+  } else {
+    select.selectedIndex = matchIndex
+  }
+  select.dispatchEvent(new Event('input', { bubbles: true }))
+  select.dispatchEvent(new Event('change', { bubbles: true }))
+  return true
+}
+
 export async function fillDropdown(element: HTMLElement, value: string): Promise<boolean> {
-  // Native <select>
+  // 1. Element is directly a native <select>
   if (element instanceof HTMLSelectElement) {
-    const lower = value.toLowerCase()
-    for (let i = 0; i < element.options.length; i++) {
-      if (element.options[i]!.text.toLowerCase() === lower) {
-        element.selectedIndex = i
-        element.dispatchEvent(new Event('change', { bubbles: true }))
-        return true
-      }
-    }
-    for (let i = 0; i < element.options.length; i++) {
-      if (element.options[i]!.text.toLowerCase().includes(lower)) {
-        element.selectedIndex = i
-        element.dispatchEvent(new Event('change', { bubbles: true }))
-        return true
-      }
-    }
-    return false
+    return fillNativeSelect(element, value)
   }
 
-  // Multiselect with chevron categories (formField-source / "How Did You Hear About Us").
+  // 2. Container has a visible native <select> inside
+  // Only take this path if the select is actually rendered (not a hidden accessibility shim).
+  // Workday sometimes injects a display:none <select> alongside its custom button+listbox widget.
+  const innerSelect = element.querySelector<HTMLSelectElement>('select')
+  if (innerSelect) {
+    const style = window.getComputedStyle(innerSelect)
+    const isVisible =
+      style.display !== 'none' && style.visibility !== 'hidden' && innerSelect.offsetParent !== null
+    if (isVisible) {
+      return fillNativeSelect(innerSelect, value)
+    }
+  }
+
+  // 3. Multiselect with chevron categories (formField-source / "How Did You Hear About Us")
   const multiselectInput = element.querySelector<HTMLElement>(
     '[data-automation-id="multiselectInputContainer"]',
   )
@@ -203,7 +297,7 @@ export async function fillDropdown(element: HTMLElement, value: string): Promise
     return fillMultiselectChevron(element, value)
   }
 
-  // Button+listbox dropdown (formField-phoneType, formField-countryRegion, etc.)
+  // 4. Button+listbox dropdown (formField-phoneType, formField-countryRegion, etc.)
   const btn =
     element.querySelector<HTMLElement>('button[aria-haspopup="listbox"]') ??
     element.querySelector<HTMLElement>('button')
